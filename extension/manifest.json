@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "HoverAI - Web Link Analysis & AI Assistant",
+  "version": "1.0.0",
+  "description": "Alt + Hover on any link for instant security checks, summaries, and AI insights",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "action": {
+    "default_title": "HoverAI - Alt + Hover for insights"
+  }
+}

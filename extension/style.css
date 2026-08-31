@@ -1,0 +1,101 @@
+/* Container chính của bảng Popup */
+#hoverai-popup {
+  position: absolute;
+  width: 480px; /* Đã tăng lên 480px cho rộng rãi */
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  z-index: 2147483647; 
+  display: none; 
+  flex-direction: column;
+  overflow: hidden;
+  color: #1e293b;
+}
+
+/* 1. Phần Trạng thái An toàn & Nút Lịch sử */
+.hoverai-header {
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between; /* Đẩy trạng thái sang trái, nút sang phải */
+  align-items: center;
+}
+.header-left { display: flex; align-items: center; gap: 8px; }
+
+.status-safe { color: #10b981; } 
+.status-loading { color: #f59e0b; } 
+.status-danger { color: #ef4444; } 
+
+/* Nút Lịch sử */
+#hai-history-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #475569;
+  font-weight: bold;
+}
+#hai-history-btn:hover { background: #e2e8f0; color: #0f172a; }
+
+/* 2. Phần Tóm tắt nội dung */
+.hoverai-summary {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+  min-height: 60px;
+}
+
+/* Nút Deep Scan */
+#hai-deepscan-btn {
+  margin-top: 10px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#hai-deepscan-btn:hover { background: #7c3aed; }
+
+/* 3. Phần Khung Chat */
+.hoverai-chat-area {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+}
+.chat-history {
+  max-height: 180px; 
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.chat-msg { padding: 8px 12px; border-radius: 8px; max-width: 85%; }
+.msg-user { background: #3b82f6; color: white; align-self: flex-end; }
+.msg-ai { background: #f1f5f9; color: #1e293b; align-self: flex-start; }
+
+.chat-input-box { display: flex; gap: 8px; margin-top: 5px; }
+.chat-input-box input {
+  flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 13px;
+}
+.chat-input-box button {
+  background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 0 12px; cursor: pointer; font-weight: bold;
+}
+.chat-input-box button:hover { background: #2563eb; }
