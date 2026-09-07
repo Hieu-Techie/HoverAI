@@ -1,40 +1,10 @@
-// Kho dữ liệu giả lập (Mock Data)
-const mockScenarios = [
-    {
-        icon: "✅",
-        status: "Liên kết an toàn",
-        statusClass: "status-safe",
-        summary: "<b>Tóm tắt Bài báo:</b> Bài báo hướng dẫn chi tiết cách thiết lập dự án trí tuệ nhân tạo, bao gồm phần cứng và thuật toán.",
-        aiGreeting: "Tôi đã đọc xong bài viết này. Bạn muốn hỏi gì thêm không?",
-        aiReply: "Theo bài viết, hệ thống ưu tiên dùng thuật toán 'Thác nước' để tối ưu tốc độ.",
-        hasDeepScan: false
-    },
-    {
-        icon: "✅",
-        status: "An toàn - Nguồn: YouTube",
-        statusClass: "status-safe",
-        summary: "<b>Tóm tắt nhanh (Dựa trên Tiêu đề):</b> Video dài 15 phút nói về 5 mẹo quản lý tài chính cá nhân.<br><i style='color:#f59e0b; font-size:12px;'>⚠️ Video này không có phụ đề sẵn.</i>",
-        aiGreeting: "Video này không có phụ đề. Bạn có thể nhấn 'Deep Scan' để tôi nghe trực tiếp âm thanh nhé.",
-        aiReply: "Bạn phải quét âm thanh trước tôi mới có thể trả lời chi tiết được.",
-        hasDeepScan: true
-    },
-    {
-        icon: "⚠️",
-        status: "CẢNH BÁO: Phát hiện liên kết lừa đảo!",
-        statusClass: "status-danger",
-        summary: "<b style='color:red;'>Nội dung bị chặn:</b> Chữ hiển thị là báo Dân Trí, nhưng đích đến lại là Shopee Affiliate.",
-        aiGreeting: "Cẩn thận! Link này chuyển hướng ngầm. Đừng nhấp vào.",
-        aiReply: "Hệ thống chặn lại để bảo vệ bạn khỏi các rủi ro không mong muốn.",
-        hasDeepScan: false
-    }
-];
-
-let currentScenario = null;
+const API_TIMEOUT_MS = 1800;
 
 // ============ FR1.1: Alt+Hover Event State Management ============
 let isAltPressed = false;           // Theo dõi trạng thái Alt key
 let lastHoveredLink = null;         // Theo dõi link đang hover
 let hoverDebounceTimer = null;      // Debounce timer để tránh gọi API liên tục
+let analysisSequence = 0;            // Bỏ qua kết quả của link cũ khi user di chuyển nhanh
 const HOVER_DEBOUNCE_DELAY = 300;   // 300ms debounce
 
 // ============ FR1.2: URL Extraction ============
@@ -61,6 +31,9 @@ function extractAndNormalizeURL(linkElement) {
     
     try {
         const url = new URL(href, window.location.origin);
+        if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) {
+            return { href: '', normalized: '', domain: '', isValid: false };
+        }
         const domain = url.hostname.replace('www.', '');
         return {
             href: url.href,
@@ -97,28 +70,30 @@ function calculateSmartPosition(mouseClientX, mouseClientY) {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const offset = 15;
+    const popupWidth = Math.min(POPUP_WIDTH, viewportWidth - (PADDING * 2));
+    const popupHeight = Math.min(POPUP_HEIGHT, viewportHeight - (PADDING * 2));
     
     let left, top;
     
     // ========== Flip Left/Right Logic ==========
     // Nếu popup sẽ tràn sang phải, đẩy sang trái
-    if (mouseClientX + offset + POPUP_WIDTH > viewportWidth) {
-        left = Math.max(PADDING, mouseClientX - offset - POPUP_WIDTH);
+    if (mouseClientX + offset + popupWidth > viewportWidth) {
+        left = Math.max(PADDING, mouseClientX - offset - popupWidth);
     } else {
         left = mouseClientX + offset;
     }
     
     // ========== Flip Top/Bottom Logic ==========
     // Nếu popup sẽ tràn xuống dưới, đẩy lên trên
-    if (mouseClientY + offset + POPUP_HEIGHT > viewportHeight) {
-        top = Math.max(PADDING, mouseClientY - offset - POPUP_HEIGHT);
+    if (mouseClientY + offset + popupHeight > viewportHeight) {
+        top = Math.max(PADDING, mouseClientY - offset - popupHeight);
     } else {
         top = mouseClientY + offset;
     }
     
     // Đảm bảo popup không tràn sang trái hoặc trên
-    left = Math.max(PADDING, Math.min(left, viewportWidth - POPUP_WIDTH - PADDING));
-    top = Math.max(PADDING, Math.min(top, viewportHeight - POPUP_HEIGHT - PADDING));
+    left = Math.max(PADDING, Math.min(left, viewportWidth - popupWidth - PADDING));
+    top = Math.max(PADDING, Math.min(top, viewportHeight - popupHeight - PADDING));
     
     return { left, top };
 }
@@ -178,7 +153,79 @@ const chatHistory = document.getElementById('hai-chat-history');
 const chatInput = document.getElementById('hai-chat-input');
 const sendBtn = document.getElementById('hai-send-btn');
 
-let demoTimeout;
+function setLoadingState() {
+    statusIcon.textContent = '⏳';
+    statusText.textContent = 'Đang kiểm tra bảo mật...';
+    statusText.className = 'status-loading';
+    summaryBox.textContent = 'Đang kiểm tra URL và đối chiếu tên miền hiển thị...';
+    deepScanBtn.style.display = 'none';
+    chatHistory.replaceChildren();
+    chatInput.value = '';
+    chatInput.disabled = true;
+    sendBtn.disabled = true;
+}
+
+async function fetchJson(path, body) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            reject(new Error('REQUEST_TIMEOUT'));
+        }, API_TIMEOUT_MS);
+
+        chrome.runtime.sendMessage({ type: 'hoverai-api-request', path, body }, (response) => {
+            clearTimeout(timeoutId);
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+            }
+            if (!response || !response.ok) {
+                reject(new Error(response?.error || 'API_REQUEST_FAILED'));
+                return;
+            }
+            resolve(response.data);
+        });
+    });
+}
+
+async function checkSecurity(linkData) {
+    const [safety, phishing] = await Promise.all([
+        fetchJson('/api/check-url-safety', { url: linkData.href }),
+        fetchJson('/api/check-phishing', {
+            href_url: linkData.href,
+            anchor_text: linkData.text
+        })
+    ]);
+    return { safety, phishing };
+}
+
+function showSecurityResult(result) {
+    const { safety, phishing } = result;
+    const cannotVerify = ['API_KEY_MISSING', 'TIMEOUT', 'UNKNOWN_ERROR'].some(
+        (errorType) => safety.threat_type === errorType
+    ) || safety.threat_type.startsWith('API_ERROR_');
+
+    if (phishing.is_phishing) {
+        statusIcon.textContent = '⚠️';
+        statusText.textContent = 'CẢNH BÁO: Phát hiện liên kết lừa đảo';
+        statusText.className = 'status-danger';
+        summaryBox.textContent = phishing.mismatch_warning;
+        return;
+    }
+
+    if (cannotVerify) {
+        statusIcon.textContent = '⚠️';
+        statusText.textContent = 'Không thể xác minh an toàn';
+        statusText.className = 'status-loading';
+        summaryBox.textContent = `Không thể hoàn tất kiểm tra: ${safety.threat_type}. Hãy kiểm tra backend và API key.`;
+        return;
+    }
+
+    statusIcon.textContent = safety.safe ? '✅' : '⚠️';
+    statusText.textContent = safety.safe ? 'Liên kết an toàn' : 'CẢNH BÁO: URL nguy hiểm';
+    statusText.className = safety.safe ? 'status-safe' : 'status-danger';
+    summaryBox.textContent = safety.safe
+        ? 'Safe Browsing không phát hiện mối đe dọa đã biết trên URL này.'
+        : `Safe Browsing phát hiện mối đe dọa: ${safety.threat_type}.`;
+}
 
 // 3. Xử lý sự kiện Alt + Di chuột & Smart Positioning
 document.addEventListener('mouseover', function(event) {
@@ -194,8 +241,6 @@ document.addEventListener('mouseover', function(event) {
         clearTimeout(hoverDebounceTimer);
         
         hoverDebounceTimer = setTimeout(() => {
-            clearTimeout(demoTimeout);
-            
             // ========== FR1.2: Extract URL & Anchor Text ==========
             const urlData = extractAndNormalizeURL(target);
             const anchorText = extractAnchorText(target);
@@ -211,15 +256,7 @@ document.addEventListener('mouseover', function(event) {
             if (!urlData.isValid) return;
             
             // Reset giao diện
-            statusIcon.textContent = "⏳";
-            statusText.textContent = "Đang phân tích liên kết...";
-            statusText.className = "status-loading";
-            summaryBox.innerHTML = '<i style="color: #94a3b8;">Hệ thống AI đang bóc tách nội dung...</i>';
-            deepScanBtn.style.display = 'none';
-            chatHistory.innerHTML = '';
-            chatInput.value = '';
-            chatInput.disabled = true;
-            sendBtn.disabled = true;
+            setLoadingState();
 
             // ========== FR1.3: Smart Positioning ==========
             const position = calculateSmartPosition(event.clientX, event.clientY);
@@ -227,23 +264,20 @@ document.addEventListener('mouseover', function(event) {
             popup.style.top = position.top + 'px';
             popup.style.display = 'flex';
 
-            currentScenario = mockScenarios[Math.floor(Math.random() * mockScenarios.length)];
-
-            // Bắt đầu giả lập API
-            demoTimeout = setTimeout(() => {
-                statusIcon.textContent = currentScenario.icon;
-                statusText.textContent = currentScenario.status;
-                statusText.className = currentScenario.statusClass;
-                summaryBox.innerHTML = currentScenario.summary;
-                
-                if(currentScenario.hasDeepScan) {
-                    deepScanBtn.style.display = 'flex';
-                }
-                
-                chatInput.disabled = false;
-                sendBtn.disabled = false;
-                chatHistory.innerHTML = `<div class="chat-msg msg-ai">${currentScenario.aiGreeting}</div>`;
-            }, 1200); 
+            const analysisId = ++analysisSequence;
+            checkSecurity(currentLinkData)
+                .then((result) => {
+                    if (analysisId === analysisSequence) {
+                        showSecurityResult(result);
+                    }
+                })
+                .catch(() => {
+                    if (analysisId !== analysisSequence) return;
+                    statusIcon.textContent = '⚠️';
+                    statusText.textContent = 'Không thể kết nối backend';
+                    statusText.className = 'status-loading';
+                    summaryBox.textContent = 'Không thể kiểm tra URL lúc này. Hãy đảm bảo backend đang chạy.';
+                });
         }, HOVER_DEBOUNCE_DELAY);
     }
 });
@@ -282,14 +316,12 @@ function handleChat() {
     let userText = chatInput.value.trim();
     if (!userText) return;
 
-    chatHistory.innerHTML += `<div class="chat-msg msg-user">${userText}</div>`;
+    const userMessage = document.createElement('div');
+    userMessage.className = 'chat-msg msg-user';
+    userMessage.textContent = userText;
+    chatHistory.appendChild(userMessage);
     chatInput.value = '';
     chatHistory.scrollTop = chatHistory.scrollHeight;
-
-    setTimeout(() => {
-        chatHistory.innerHTML += `<div class="chat-msg msg-ai">${currentScenario.aiReply}</div>`;
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-    }, 800);
 }
 
 sendBtn.addEventListener('click', handleChat);
@@ -302,4 +334,8 @@ document.addEventListener('click', function(event) {
     if (!popup.contains(event.target)) {
         popup.style.display = 'none';
     }
+});
+
+window.addEventListener('blur', function() {
+    isAltPressed = false;
 });

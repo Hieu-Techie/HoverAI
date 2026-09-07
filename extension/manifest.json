@@ -16,6 +16,9 @@
       "css": ["style.css"]
     }
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "HoverAI - Alt + Hover for insights"
   }

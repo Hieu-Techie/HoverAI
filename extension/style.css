@@ -1,7 +1,9 @@
 /* Container chính của bảng Popup */
 #hoverai-popup {
-  position: absolute;
-  width: 480px; /* Đã tăng lên 480px cho rộng rãi */
+  position: fixed;
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  box-sizing: border-box;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;

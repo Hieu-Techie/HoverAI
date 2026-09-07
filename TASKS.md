@@ -40,25 +40,25 @@ Xây dựng giao diện popup và logic bắt sự kiện Alt + Hover trên liê
 Kiểm tra URL an toàn và phát hiện lừa đảo.
 
 ### FR2.1 - Kiểm tra mã độc (Malware Detection via Safe Browsing)
-- [ ] Create Safe Browsing API integration module - *Tạo module gọi Google Safe Browsing API*
-- [ ] Implement POST /api/check-url-safety endpoint - *Tạo endpoint kiểm tra URL*
-- [ ] Send URL to Google Safe Browsing API - *Gửi URL lên Safe Browsing*
-- [ ] Handle API responses (SAFE / DANGEROUS) - *Xử lý kết quả từ API*
-- [ ] Implement caching for repeated URLs (in-memory) - *Cache kết quả để tránh gọi API lại*
-- [ ] Return safety status with threat type - *Trả về kết quả với loại mối đe dọa*
-- [ ] Add timeout handling (max 1.5 seconds) - *Xử lý timeout (< 1.5s)*
-- [ ] Test with known malicious URLs - *Kiểm tra với các URL độc hại nổi tiếng*
+- [x] Create Safe Browsing API integration module - *Tạo module gọi Google Safe Browsing API*
+- [x] Implement POST /api/check-url-safety endpoint - *Tạo endpoint kiểm tra URL*
+- [x] Send URL to Google Safe Browsing API - *Gửi URL lên Safe Browsing*
+- [x] Handle API responses (SAFE / DANGEROUS) - *Xử lý kết quả từ API*
+- [x] Implement caching for repeated URLs (in-memory) - *Cache kết quả để tránh gọi API lại*
+- [x] Return safety status with threat type - *Trả về kết quả với loại mối đe dọa*
+- [x] Add timeout handling (max 1.5 seconds) - *Xử lý timeout (< 1.5s)*
+- [x] Test with known malicious URLs - *Kiểm tra với các URL độc hại nổi tiếng*
 
 ### FR2.2 - Phát hiện ngụy trang (Anti-Phishing Detection)
-- [ ] Extract domain from anchor text - *Bóc tách domain từ text liên kết*
-- [ ] Extract domain from href URL - *Bóc tách domain từ URL đích*
-- [ ] Implement domain comparison logic - *So sánh hai domain*
-- [ ] Create POST /api/check-phishing endpoint - *Tạo endpoint phát hiện lừa đảo*
-- [ ] Return mismatch warning if domains differ - *Cảnh báo nếu domain không khớp*
-- [ ] Handle subdomain variations (youtube.com vs m.youtube.com) - *Xử lý subdomain*
-- [ ] Add known domain mapping (common aliasing) - *Ánh xạ domain nổi tiếng*
+- [x] Extract domain from anchor text - *Bóc tách domain từ text liên kết*
+- [x] Extract domain from href URL - *Bóc tách domain từ URL đích*
+- [x] Implement domain comparison logic - *So sánh hai domain*
+- [x] Create POST /api/check-phishing endpoint - *Tạo endpoint phát hiện lừa đảo*
+- [x] Return mismatch warning if domains differ - *Cảnh báo nếu domain không khớp*
+- [x] Handle subdomain variations (youtube.com vs m.youtube.com) - *Xử lý subdomain*
+- [x] Add known domain mapping (common aliasing) - *Ánh xạ domain nổi tiếng*
 
-**Status**: 0% Complete (0/15 tasks)
+**Status**: 100% Complete (15/15 tasks)
 
 ---
 
@@ -179,38 +179,24 @@ Lưu trữ lịch sử và cung cấp dashboard quản lý trực tiếp trên t
 | Module | Name | Completion | Tasks | Status |
 |--------|------|-----------|-------|--------|
 | 1 | UI & Event Handling | 100% ✅ | 15/15 | 🎉 **COMPLETE** |
-| 2 | Network Security | 0% | 0/15 | ❌ **CURRENT FOCUS** |
+| 2 | Network Security | 100% ✅ | 15/15 | 🎉 **COMPLETE** |
 | 3 | Content Extraction & Summarization | 0% | 0/32 | ❌ Requires Module 2 |
 | 4 | Contextual Q&A (RAG) | 0% | 0/21 | ❌ Requires Module 3 |
 | 5 | Knowledge Management | 0% | 0/16 | ❌ Requires Module 4 |
-| **TOTAL** | **HoverAI Project** | **15%** 🚧 | **15/99** | Ready for Module 2 |
+| **TOTAL** | **HoverAI Project** | **30%** 🚧 | **30/99** | Ready for Module 3 |
 
 ---
 
 ## 📌 Priority Tasks (Next Steps)
 
-### 🔴 **CRITICAL - Current Focus**
-1. **[Module 2.1]** Implement `POST /api/check-url-safety` endpoint
-   - File: `backend/app/routes/security.py` (new file)
-   - Use: Google Safe Browsing API
-   - Requirement: < 1.5 seconds response time
-   - Return: `{"safe": true/false, "threat_type": "..."}`
-
-2. **[Module 2.2]** Implement `POST /api/check-phishing` endpoint
-   - File: `backend/app/services/phishing_detector.py` (new file)
-   - Logic: Compare domain from link text vs href URL
-   - Return: `{"is_phishing": true/false, "mismatch_warning": "..."}`
-
-### 🟡 **MEDIUM - Upcoming**
-3. **[Module 3.1]** Setup content extraction module using Trafilatura
+### 🟡 **NEXT - Module 3**
+1. **[Module 3.1]** Setup content extraction module using Trafilatura
    - File: `backend/app/services/content_extractor.py`
-4. **[Module 3.2]** Create meta tag parser for product pages
+2. **[Module 3.2]** Create meta tag parser for product pages
 
 ---
 
 ## 📚 Documentation Files
 
 - **[TASKS.md](TASKS.md)** - This file: 103 tasks across 5 Modules
-- **[PROGRESS.md](PROGRESS.md)** - Mapping from old Phases → new Modules + current status
-- **[QUICK_START.md](QUICK_START.md)** - Simple guide for next steps
 - **[README.md](README.md)** - Full project overview & architecture

@@ -8,11 +8,11 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, Any
 from dotenv import load_dotenv
+from app.routes import security
 
 load_dotenv()
 
 class Settings:
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     SAFE_BROWSING_API_KEY: str = os.getenv("SAFE_BROWSING_API_KEY", "")
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     HOST: str = os.getenv("HOST", "127.0.0.1")
@@ -41,18 +41,15 @@ class HealthResponse(BaseModel):
     environment: str
 
 app = FastAPI(
-    title="AI Browser Assistant",
+    title="HoverAI API",
     description="AI-powered web browsing assistant with RAG capabilities",
     version="1.0.0"
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "chrome-extension://*",
-    ],
+    allow_origins=[],
+    allow_origin_regex=r"^chrome-extension://[a-p]{32}$|^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,6 +77,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         content={"success": False, "error": "Validation Error", "details": exc.errors()}
     )
+
+app.include_router(security.router)
 
 @app.get("/", response_model=BaseResponse)
 async def health_check():
