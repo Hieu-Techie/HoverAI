@@ -1,4 +1,4 @@
-/* Container chính của bảng Popup */
+/* Module 1, FR1.1: khung popup được inject bởi content.js. */
 #hoverai-popup {
   position: fixed;
   width: min(480px, calc(100vw - 24px));
@@ -16,7 +16,7 @@
   color: #1e293b;
 }
 
-/* 1. Phần Trạng thái An toàn & Nút Lịch sử */
+/* Module 1/2: header hiển thị trạng thái bảo mật và nút placeholder Module 5. */
 .hoverai-header {
   padding: 12px 16px;
   background: #f8fafc;
@@ -24,7 +24,7 @@
   font-weight: 600;
   font-size: 14px;
   display: flex;
-  justify-content: space-between; /* Đẩy trạng thái sang trái, nút sang phải */
+  justify-content: space-between; /* Đẩy trạng thái sang trái, nút sang phải. */
   align-items: center;
 }
 .header-left { display: flex; align-items: center; gap: 8px; }
@@ -33,7 +33,7 @@
 .status-loading { color: #f59e0b; } 
 .status-danger { color: #ef4444; } 
 
-/* Nút Lịch sử */
+/* Module 5, FR5.2: nút mở trang lịch sử, hiện là placeholder. */
 #hai-history-btn {
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
@@ -46,7 +46,7 @@
 }
 #hai-history-btn:hover { background: #e2e8f0; color: #0f172a; }
 
-/* 2. Phần Tóm tắt nội dung */
+/* Module 3, FR3.1: vùng preview nội dung trích xuất. */
 .hoverai-summary {
   padding: 16px;
   font-size: 14px;
@@ -56,7 +56,17 @@
   min-height: 60px;
 }
 
-/* Nút Deep Scan */
+/* Module 3, FR3.1: trạng thái lấy nội dung nằm dưới kết quả bảo mật. */
+.content-status {
+  margin-top: 10px;
+  white-space: pre-line;
+  font-size: 13px;
+}
+.content-loading { color: #64748b; }
+.content-success { color: #334155; }
+.content-error { color: #b45309; }
+
+/* Module 3, FR3.5: nút hiện đang là mock. */
 #hai-deepscan-btn {
   margin-top: 10px;
   background: #8b5cf6;
@@ -73,7 +83,7 @@
 }
 #hai-deepscan-btn:hover { background: #7c3aed; }
 
-/* 3. Phần Khung Chat */
+/* Module 4, FR4.3: khung chat hiện chưa kết nối RAG/streaming. */
 .hoverai-chat-area {
   padding: 12px 16px;
   display: flex;

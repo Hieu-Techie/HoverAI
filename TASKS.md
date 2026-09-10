@@ -40,23 +40,23 @@ Xây dựng giao diện popup và logic bắt sự kiện Alt + Hover trên liê
 Kiểm tra URL an toàn và phát hiện lừa đảo.
 
 ### FR2.1 - Kiểm tra mã độc (Malware Detection via Safe Browsing)
-- [x] Create Safe Browsing API integration module - *Tạo module gọi Google Safe Browsing API*
-- [x] Implement POST /api/check-url-safety endpoint - *Tạo endpoint kiểm tra URL*
-- [x] Send URL to Google Safe Browsing API - *Gửi URL lên Safe Browsing*
-- [x] Handle API responses (SAFE / DANGEROUS) - *Xử lý kết quả từ API*
-- [x] Implement caching for repeated URLs (in-memory) - *Cache kết quả để tránh gọi API lại*
-- [x] Return safety status with threat type - *Trả về kết quả với loại mối đe dọa*
-- [x] Add timeout handling (max 1.5 seconds) - *Xử lý timeout (< 1.5s)*
-- [x] Test with known malicious URLs - *Kiểm tra với các URL độc hại nổi tiếng*
+- [x] Create Safe Browsing API integration module - *Tạo module gọi Google Safe Browsing API* ✅
+- [x] Implement POST /api/check-url-safety endpoint - *Tạo endpoint kiểm tra URL* ✅
+- [x] Send URL to Google Safe Browsing API - *Gửi URL lên Safe Browsing* ✅
+- [x] Handle API responses (SAFE / DANGEROUS) - *Xử lý kết quả từ API* ✅
+- [x] Implement caching for repeated URLs (in-memory) - *Cache kết quả để tránh gọi API lại* ✅
+- [x] Return safety status with threat type - *Trả về kết quả với loại mối đe dọa* ✅
+- [x] Add timeout handling (max 1.5 seconds) - *Xử lý timeout (< 1.5s)* ✅
+- [x] Test with known malicious URLs - *Kiểm tra với các URL độc hại nổi tiếng* ✅
 
 ### FR2.2 - Phát hiện ngụy trang (Anti-Phishing Detection)
-- [x] Extract domain from anchor text - *Bóc tách domain từ text liên kết*
-- [x] Extract domain from href URL - *Bóc tách domain từ URL đích*
-- [x] Implement domain comparison logic - *So sánh hai domain*
-- [x] Create POST /api/check-phishing endpoint - *Tạo endpoint phát hiện lừa đảo*
-- [x] Return mismatch warning if domains differ - *Cảnh báo nếu domain không khớp*
-- [x] Handle subdomain variations (youtube.com vs m.youtube.com) - *Xử lý subdomain*
-- [x] Add known domain mapping (common aliasing) - *Ánh xạ domain nổi tiếng*
+- [x] Extract domain from anchor text - *Bóc tách domain từ text liên kết* ✅
+- [x] Extract domain from href URL - *Bóc tách domain từ URL đích* ✅
+- [x] Implement domain comparison logic - *So sánh hai domain* ✅
+- [x] Create POST /api/check-phishing endpoint - *Tạo endpoint phát hiện lừa đảo* ✅
+- [x] Return mismatch warning if domains differ - *Cảnh báo nếu domain không khớp* ✅
+- [x] Handle subdomain variations (youtube.com vs m.youtube.com) - *Xử lý subdomain* ✅
+- [x] Add known domain mapping (common aliasing) - *Ánh xạ domain nổi tiếng* ✅
 
 **Status**: 100% Complete (15/15 tasks)
 
@@ -67,20 +67,23 @@ Kiểm tra URL an toàn và phát hiện lừa đảo.
 Xử lý các loại content khác nhau và tạo tóm tắt thông minh.
 
 ### FR3.1 - Xử lý Báo chí/Web thông tin (News & Articles)
-- [ ] Create content extraction module using Trafilatura - *Tạo module bóc tách nội dung*
-- [ ] Implement POST /api/extract-content endpoint - *Tạo endpoint trích xuất*
-- [ ] Remove boilerplate (menu, footer, ads) - *Loại bỏ menu, footer, quảng cáo*
-- [ ] Extract main article text - *Bóc tách text bài viết chính*
-- [ ] Extract article title and metadata - *Lấy tiêu đề và metadata*
-- [ ] Fallback to newspaper3k if Trafilatura fails - *Dự phòng bằng newspaper3k*
+- [x] Create content extraction module using Trafilatura - *Tạo module bóc tách nội dung* ✅
+- [x] Implement POST /api/extract-content endpoint - *Tạo endpoint trích xuất* ✅
+- [x] Remove boilerplate (menu, footer, ads) - *Loại bỏ menu, footer, quảng cáo* ✅
+- [x] Extract main article text - *Bóc tách text bài viết chính* ✅
+- [x] Extract article title and metadata - *Lấy tiêu đề và metadata* ✅
+- [x] Fallback to newspaper3k if Trafilatura fails - *Dự phòng bằng newspaper3k* ✅
+- [x] Create AI summarization service with Gemini API (BYOK) - *Tạo service gọi Gemini tóm tắt* ✅
+- [x] Design standard 3-bullet prompt for articles - *Thiết kế prompt tóm tắt 3 ý chính khách quan* ✅
+- [x] Integrate summarizer into content pipeline - *Nối luồng: Bóc tách text -> Gemini tóm tắt -> Trả về Popup* ✅
 
 ### FR3.2 - Xử lý Trang Sản phẩm (Product Pages & Structured Data)
-- [ ] Create meta tag parser (OpenGraph, Schema.org) - *Phân tích meta tag và Schema.org*
-- [ ] Extract product name from JSON-LD or meta tags - *Lấy tên sản phẩm*
-- [ ] Extract price, ratings, specifications - *Lấy giá, đánh giá, thông số*
-- [ ] Parse structured data from HTML - *Phân tích dữ liệu có cấu trúc*
-- [ ] Create POST /api/extract-product endpoint - *Tạo endpoint trích xuất sản phẩm*
-- [ ] Handle different e-commerce sites (Amazon, Shopee, etc) - *Xử lý các site khác nhau*
+- [x] Create meta tag parser (OpenGraph, Schema.org) - *Phân tích meta tag và Schema.org* ✅
+- [x] Extract product name from JSON-LD or meta tags - *Lấy tên sản phẩm* ✅
+- [x] Extract price, ratings, specifications - *Lấy giá, đánh giá, thông số* ✅
+- [x] Parse structured data from HTML - *Phân tích dữ liệu có cấu trúc* ✅
+- [x] Create POST /api/extract-product endpoint - *Tạo endpoint trích xuất sản phẩm* ✅
+- [x] Handle different e-commerce sites (Amazon, Shopee, etc) - *Xử lý các site khác nhau* ✅
 
 ### FR3.3 - Xử lý Video & Lấy Phụ đề (Video Transcript Extraction)
 - [ ] Create YouTube transcript extraction module - *Tạo module lấy phụ đề YouTube*
@@ -108,7 +111,7 @@ Xử lý các loại content khác nhau và tạo tóm tắt thông minh.
 - [ ] Handle audio-only streams and podcasts - *Xử lý stream audio và podcast*
 - [ ] Add timeout for large audio files (max 5 mins) - *Xử lý timeout*
 
-**Status**: 0% Complete (0/32 tasks)
+**Status**: 43% Complete (15/35 tasks) — FR3.1 ✅ FR3.2 ✅
 
 ---
 
@@ -180,10 +183,10 @@ Lưu trữ lịch sử và cung cấp dashboard quản lý trực tiếp trên t
 |--------|------|-----------|-------|--------|
 | 1 | UI & Event Handling | 100% ✅ | 15/15 | 🎉 **COMPLETE** |
 | 2 | Network Security | 100% ✅ | 15/15 | 🎉 **COMPLETE** |
-| 3 | Content Extraction & Summarization | 0% | 0/32 | ❌ Requires Module 2 |
+| 3 | Content Extraction & Summarization | 43% | 15/35 | 🚧 FR3.1 ✅ FR3.2 ✅ |
 | 4 | Contextual Q&A (RAG) | 0% | 0/21 | ❌ Requires Module 3 |
 | 5 | Knowledge Management | 0% | 0/16 | ❌ Requires Module 4 |
-| **TOTAL** | **HoverAI Project** | **30%** 🚧 | **30/99** | Ready for Module 3 |
+| **TOTAL** | **HoverAI Project** | **44%** 🚧 | **45/102** | Continue Module 3 |
 
 ---
 
@@ -198,5 +201,5 @@ Lưu trữ lịch sử và cung cấp dashboard quản lý trực tiếp trên t
 
 ## 📚 Documentation Files
 
-- **[TASKS.md](TASKS.md)** - This file: 103 tasks across 5 Modules
+- **[TASKS.md](TASKS.md)** - This file: 102 tasks across 5 Modules
 - **[README.md](README.md)** - Full project overview & architecture

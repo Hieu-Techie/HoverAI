@@ -125,9 +125,8 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 Ensure you have:
 - `extension/manifest.json`
 - `extension/content.js`
-- `extension/styles.css`
-- `extension/options.html`
-- `extension/options.js`
+- `extension/style.css`
+- `extension/background.js`
 
 #### Step 2: Load Extension in Chrome
 1. Open Chrome and navigate to: `chrome://extensions/`
@@ -318,22 +317,22 @@ HoverAI/
 │       │   ├── video.py          # FR3.3-3.5 - Video & audio processing
 │       │   └── rag.py            # FR4.1-4.3 - RAG pipeline
 │       ├── 📁 services/          # Business logic
-│       │   ├── url_safety.py     # Safe Browsing API wrapper
-│       │   ├── phishing_detector.py # Domain comparison
-│       │   ├── content_extractor.py # Trafilatura + Newspaper3k
-│       │   ├── video_handler.py  # youtube-transcript-api + yt-dlp
-│       │   ├── gemini_service.py # Gemini API wrapper
-│       │   └── rag_pipeline.py   # LangChain + ChromaDB
-│       └── 📁 utils/             # Helper functions
+│       │   ├── url_safety.py           # Safe Browsing API
+│       │   ├── phishing_detector.py     # Domain comparison
+│       │   ├── content_classifier.py    # Article/product/video classifier
+│       │   ├── content_dispatcher.py    # Điều phối processor theo content type
+│       │   ├── content_extractor.py    # Trafilatura/Newspaper/Jina
+│       │   └── gemini_service.py       # Gemini summarization
 │
 └── 📁 extension/                  # Chrome Extension (Manifest V3)
     ├── 📄 manifest.json          # Manifest V3 configuration
-    ├── 📄 content.js             # Content script (FR1.1-1.3)
-    ├── 📄 styles.css             # Extension styling
-    ├── 📄 options.html           # Settings & Local Dashboard UI
-    ├── 📄 options.js             # Local Storage & Dashboard logic
-    └── 📄 api-client.js          # API communication module
+    ├── 📄 content.js             # Alt + Hover, popup và phân tích trang hiện tại
+    ├── 📄 background.js           # MV3 service worker gọi backend
+    └── 📄 style.css               # Extension styling
 ```
+
+  Các file `product_extractor.py`, `video_handler.py`, `rag_pipeline.py`,
+  `options.html` và `options.js` sẽ được thêm khi triển khai các module tương ứng.
 
 ## 🔧 Configuration
 
