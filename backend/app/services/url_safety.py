@@ -4,13 +4,15 @@ import asyncio
 from cachetools import TTLCache
 from dotenv import load_dotenv
 
+# Module 2, FR2.1: lớp bao bất đồng bộ cho Google Safe Browsing và cache kết quả.
 load_dotenv()
 SAFE_BROWSING_API_KEY = os.getenv("SAFE_BROWSING_API_KEY")
 
-# Cache lưu trữ tối đa 1000 URLs trong 1 giờ để đáp ứng yêu cầu bộ nhớ đệm (in-memory caching)
+# Cache lưu tối đa 1.000 URL trong 1 giờ để giảm số lần gọi API.
 url_cache = TTLCache(maxsize=1000, ttl=3600)
 
 async def check_url_with_safe_browsing(url: str) -> dict:
+    """FR2.1: kiểm tra URL, cache 1 giờ và fail-closed khi không xác minh được."""
     # Trả về ngay lập tức nếu URL đã được quét trước đó
     if url in url_cache:
         return url_cache[url]

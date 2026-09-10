@@ -1,6 +1,7 @@
 from urllib.parse import urlparse
 
-# Task 7: Ánh xạ domain nổi tiếng (Common Aliasing)
+# Module 2, FR2.2: chuẩn hóa hostname và phát hiện domain hiển thị giả mạo.
+# FR2.2: alias cho các dịch vụ có domain rút gọn hoặc domain di động.
 KNOWN_ALIASES = {
     "youtu.be": "youtube.com",
     "m.youtube.com": "youtube.com",
@@ -16,7 +17,7 @@ KNOWN_ALIASES = {
 MULTI_PART_SUFFIXES = {"co.uk", "com.au", "co.jp", "com.br", "co.in"}
 
 def get_base_domain(url_or_text: str) -> str:
-    """Task 1 & 2: Bóc tách domain từ text liên kết hoặc URL đích"""
+    """FR2.2: bóc tách hostname từ URL đích hoặc anchor text."""
     if not url_or_text:
         return ""
         
@@ -39,7 +40,7 @@ def get_base_domain(url_or_text: str) -> str:
         return ""
 
 def normalize_domain(domain: str) -> str:
-    """Task 6: Xử lý subdomain và chuẩn hóa qua Aliases"""
+    """FR2.2: chuẩn hóa alias và lấy registrable domain để so sánh."""
     if not domain:
         return ""
         
@@ -57,6 +58,7 @@ def normalize_domain(domain: str) -> str:
     return KNOWN_ALIASES.get(base_domain, base_domain)
 
 def check_phishing(href_url: str, anchor_text: str) -> dict:
+    """FR2.2: cảnh báo khi anchor domain không trùng domain đích hợp lệ."""
     # Nếu text hiển thị không mang dáng dấp của một URL (không có dấu chấm hoặc chứa dấu cách)
     # thì không cần kiểm tra phishing ngụy trang tên miền.
     if not anchor_text or "." not in anchor_text or any(char.isspace() for char in anchor_text):

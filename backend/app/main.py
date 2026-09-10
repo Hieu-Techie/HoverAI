@@ -9,10 +9,13 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional, Any
 from dotenv import load_dotenv
 from app.routes import security
+from app.routes import content
 
+# Module 1/2/3: điểm khởi chạy FastAPI và nơi đăng ký toàn bộ route backend.
 load_dotenv()
 
 class Settings:
+    """Module 2: Đọc cấu hình backend từ biến môi trường."""
     SAFE_BROWSING_API_KEY: str = os.getenv("SAFE_BROWSING_API_KEY", "")
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     HOST: str = os.getenv("HOST", "127.0.0.1")
@@ -27,14 +30,17 @@ logging.basicConfig(
 logger = logging.getLogger("SmartWebAI")
 
 class BaseResponse(BaseModel):
+    """Response dùng cho kiểm tra trạng thái (health check) cơ bản của ứng dụng."""
     success: bool = True
     data: Optional[Any] = None
     error: Optional[str] = None
 
 class URLRequest(BaseModel):
+    """Model dùng chung cho yêu cầu URL; hiện chưa có route dùng trực tiếp."""
     url: HttpUrl
 
 class HealthResponse(BaseModel):
+    """Module vận hành: schema response của endpoint /api/health."""
     status: str
     service: str
     version: str
@@ -46,6 +52,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Module 2/3: cho phép extension gọi backend local từ Chrome.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[],
@@ -57,6 +64,7 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    """Module vận hành: ghi log method, path, status và thời gian xử lý."""
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
@@ -65,6 +73,7 @@ async def log_requests(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    """Module vận hành: chuyển lỗi không dự kiến thành response JSON thống nhất."""
     logger.error(f"Lỗi hệ thống: {str(exc)}")
     return JSONResponse(
         status_code=500,
@@ -73,12 +82,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Module 2/3: trả lỗi 422 dễ đọc khi yêu cầu không đúng schema."""
     return JSONResponse(
         status_code=422,
         content={"success": False, "error": "Validation Error", "details": exc.errors()}
     )
 
 app.include_router(security.router)
+app.include_router(content.router)
 
 @app.get("/", response_model=BaseResponse)
 async def health_check():
