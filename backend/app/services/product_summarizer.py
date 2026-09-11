@@ -1,37 +1,46 @@
-"""Module 3, FR3.2: tóm tắt trang sản phẩm bằng Gemini với prompt chuyên biệt."""
+"""Module 3, FR3.2: tóm tắt trang sản phẩm bằng Gemini, kèm tên sản phẩm chuẩn hóa tiếng Việt."""
 
-import asyncio
 import os
 from typing import Any, Dict, Optional
 
-import google.generativeai as genai
-from dotenv import load_dotenv
+from app.services.gemini_client import GEMINI_MODEL, call_gemini_async  # noqa: F401
 
-load_dotenv()
-
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 SUMMARY_MAX_INPUT_CHARS = 30_000
-SUMMARY_TIMEOUT_SECONDS = 20
+
+# Marker tách tên sản phẩm và tóm tắt trong response Gemini
+_NAME_MARKER = "TÊN SẢN PHẨM:"
 
 
 def build_product_summary_prompt(product: Dict[str, Any]) -> str:
-    """FR3.2: prompt yêu cầu Gemini tóm tắt sản phẩm theo 3 ý khách quan."""
+    """FR3.2: prompt yêu cầu Gemini chuẩn hóa tên sản phẩm và tóm tắt 3 ý khách quan.
+
+    Quy tắc tên:
+    - Giữ nguyên tên thương hiệu và mã model (Sony, WH-1000XM5, iPhone 16 Pro).
+    - Nếu có phần mô tả tiếng Anh kèm tên → dịch phần mô tả sang tiếng Việt.
+    - Nếu tên đã là tiếng Việt tự nhiên → giữ nguyên.
+    """
     name = product.get("name") or "Sản phẩm"
     price = product.get("price_display") or product.get("price") or "Không rõ"
     rating = product.get("rating_display") or product.get("rating") or "Không rõ"
     brand = product.get("brand") or "Không rõ"
     description = (product.get("description") or "")[:SUMMARY_MAX_INPUT_CHARS]
 
-    return f"""Bạn là trợ lý tóm tắt thông tin sản phẩm khách quan.
-YÊU CẦU ĐỊNH DẠNG NGHIÊM NGẶT BẮT BUỘC:
-1. Tóm tắt thông tin sản phẩm dưới đây thành đúng 3 gạch đầu dòng bằng tiếng Việt. Tuyệt đối KHÔNG có câu mở đầu hay câu kết luận.
-2. Gạch đầu dòng 1: điểm nổi bật chính của sản phẩm (tính năng, công dụng chính).
-3. Gạch đầu dòng 2: thông tin giá và đánh giá từ người dùng (nếu có).
-4. Gạch đầu dòng 3: điều người mua nên biết hoặc lưu ý trước khi mua.
-5. BẮT BUỘC bắt đầu mỗi dòng bằng ký tự "-" (dấu gạch ngang) theo sau là khoảng trắng. Tuyệt đối KHÔNG dùng dấu "*".
-6. Không suy đoán, không thêm thông tin ngoài dữ liệu được cung cấp.
+    return f"""Bạn là trợ lý tóm tắt thông tin sản phẩm khách quan, viết bằng tiếng Việt.
 
-Tên sản phẩm: {name}
+NHIỆM VỤ: Hãy đọc thông tin sản phẩm dưới đây và trả về đúng 4 dòng theo định dạng sau. TUYỆT ĐỐI KHÔNG thêm bất kỳ text nào khác.
+
+TÊN SẢN PHẨM: <tên sản phẩm bằng tiếng Việt — giữ nguyên tên thương hiệu & mã model (Sony, iPhone, WH-1000XM5...), dịch phần mô tả tiếng Anh nếu có, giữ nguyên nếu tên đã là tiếng Việt tự nhiên>
+- <điểm nổi bật chính: tính năng hoặc công dụng chính>
+- <thông tin giá và đánh giá từ người dùng (nếu có dữ liệu)>
+- <điều người mua nên biết hoặc lưu ý trước khi mua>
+
+QUY TẮC:
+- Mỗi ý là một câu ngắn gọn, khách quan, chỉ dựa trên dữ liệu được cung cấp.
+- BẮT BUỘC bắt đầu mỗi ý bằng ký tự "-" (dấu gạch ngang) rồi khoảng trắng.
+- Tuyệt đối KHÔNG dùng dấu "*", KHÔNG có câu mở đầu hay kết luận.
+- Nếu không có thông tin giá/đánh giá thì ghi: "Chưa có thông tin giá/đánh giá."
+
+Tên sản phẩm gốc: {name}
 Thương hiệu: {brand}
 Giá: {price}
 Đánh giá: {rating}
@@ -41,27 +50,38 @@ Mô tả:
 """
 
 
-def _generate_product_summary(api_key: str, product: Dict[str, Any]) -> str:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(GEMINI_MODEL)
-    response = model.generate_content(build_product_summary_prompt(product))
-    return (response.text or "").strip()
+def _parse_product_result(raw: str) -> Dict[str, Optional[str]]:
+    """Tách tên sản phẩm đã chuẩn hóa và phần tóm tắt từ response Gemini."""
+    raw = (raw or "").strip()
+    name_vi: Optional[str] = None
+    summary_lines = []
+
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not name_vi and stripped.upper().startswith(_NAME_MARKER.upper()):
+            candidate = stripped[len(_NAME_MARKER):].strip()
+            if candidate:
+                name_vi = candidate
+        elif stripped.startswith("-"):
+            summary_lines.append(stripped)
+
+    summary = "\n".join(summary_lines) if summary_lines else (raw if not name_vi else None)
+    return {"name_vi": name_vi, "summary": summary}
 
 
 async def summarize_product(
-    product: Dict[str, Any], api_key: Optional[str] = None
-) -> Optional[str]:
-    """FR3.2: gọi Gemini tóm tắt sản phẩm, không chặn event loop; lỗi trả None."""
+    product: Dict[str, Any],
+    api_key: Optional[str] = None,
+) -> Optional[Dict[str, Optional[str]]]:
+    """FR3.2: gọi Gemini qua gemini_client (thread-safe BYOK); trả dict {name_vi, summary}.
+
+    name_vi: tên sản phẩm đã chuẩn hóa tiếng Việt (giữ brand/model, dịch mô tả)
+    summary: tóm tắt 3 gạch đầu dòng tiếng Việt
+    """
     key = api_key or os.getenv("GEMINI_API_KEY", "")
-    # Cần ít nhất tên hoặc mô tả để tóm tắt.
     if not key or (not product.get("name") and not product.get("description")):
         return None
-    try:
-        loop = asyncio.get_running_loop()
-        return await asyncio.wait_for(
-            loop.run_in_executor(None, _generate_product_summary, key, product),
-            timeout=SUMMARY_TIMEOUT_SECONDS,
-        )
-    except (asyncio.TimeoutError, Exception):
-        return None
 
+    prompt = build_product_summary_prompt(product)
+    raw = await call_gemini_async(key, prompt)
+    return _parse_product_result(raw) if raw else None

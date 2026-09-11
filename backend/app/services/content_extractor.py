@@ -10,12 +10,16 @@ try:
 except ImportError:
     Article = None
 
+from app.services.jina_reader import (
+    JINA_TIMEOUT_ARTICLE,
+    fetch_jina_markdown,
+    parse_title_from_markdown,
+)
+
 # Module 3, FR3.1: tải và trích xuất nội dung bài viết từ HTML công khai
 # hoặc DOM đã render do extension gửi lên.
 MAX_HTML_BYTES = 5 * 1024 * 1024
 FETCH_TIMEOUT_SECONDS = 10
-JINA_TIMEOUT_SECONDS = 30
-JINA_MIN_TEXT_LENGTH = 300
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -104,42 +108,16 @@ async def _fetch_html(url: str) -> str:
 
 
 async def _extract_with_jina(url: str) -> Optional[Dict[str, Any]]:
-    """FR3.1: fallback cuối dùng Jina Reader khi nguồn/parser local thất bại."""
-    timeout = aiohttp.ClientTimeout(total=JINA_TIMEOUT_SECONDS)
-    headers = {
-        "Accept": "text/markdown, text/plain;q=0.9",
-        "User-Agent": USER_AGENT,
-    }
-    jina_url = f"https://r.jina.ai/{url}"
-    try:
-        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-            async with session.get(jina_url) as response:
-                if response.status >= 400:
-                    return None
-                body = await response.read()
-                text = body.decode("utf-8", errors="replace").strip()
-    except (asyncio.TimeoutError, aiohttp.ClientError):
+    """FR3.1: fallback cuối dùng jina_reader khi nguồn/parser local thất bại."""
+    markdown = await fetch_jina_markdown(url, timeout=JINA_TIMEOUT_ARTICLE)
+    if not markdown:
         return None
 
-    if len(text) < JINA_MIN_TEXT_LENGTH:
-        return None
-
-    title = ""
-    lines = text.splitlines()
-    for line in lines:
-        stripped_line = line.strip()
-        candidate = stripped_line.lstrip("#").strip()
-        if stripped_line.lower().startswith("title:"):
-            title = stripped_line.split(":", 1)[1].strip()
-            break
-        if stripped_line.startswith("#") and candidate:
-            title = candidate
-            break
-
+    title = parse_title_from_markdown(markdown, strip_site_suffix=False) or ""
     return {
         "method": "jina_reader",
         "title": title,
-        "text": text,
+        "text": markdown,
         "metadata": {},
         "url": url,
     }

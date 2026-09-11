@@ -8,7 +8,7 @@ from app.services.content_extractor import (
     extract_article_content,
     extract_article_content_from_html,
 )
-from app.services.gemini_service import summarize_article
+from app.services.article_summarizer import summarize_article
 from app.services.product_extractor import (
     extract_product_from_html,
     fetch_and_extract_product,
@@ -33,13 +33,22 @@ async def _dispatch_article(
     content_type: ContentType,
     gemini_api_key: Optional[str],
 ) -> Dict[str, Any]:
-    """FR3.1: gắn content type và summary vào kết quả bài viết."""
+    """FR3.1: gắn content type, summary và tiêu đề chuẩn hóa tiếng Việt vào kết quả bài viết."""
     result["content_type"] = content_type.value
-    result["summary"] = await summarize_article(
+    gemini_result = await summarize_article(
         result.get("title", ""),
         result.get("text", ""),
         gemini_api_key,
     )
+    if isinstance(gemini_result, dict):
+        result["summary"] = gemini_result.get("summary")
+        # Ưu tiên tiêu đề đã chuẩn hóa tiếng Việt từ AI nếu có
+        title_vi = gemini_result.get("title_vi")
+        if title_vi:
+            result["title_vi"] = title_vi   # giữ cả bản gốc cho debug
+            result["title"] = title_vi
+    else:
+        result["summary"] = gemini_result
     return result
 
 
@@ -51,19 +60,17 @@ def _product_to_unified_response(
     product: Dict[str, Any],
     summary: Optional[str],
     url: str,
+    name_vi: Optional[str] = None,
 ) -> Dict[str, Any]:
     """FR3.2: chuyển đổi dict sản phẩm về schema chung (Phương án A — backward compat).
 
-    Dùng lại ContentExtractionResponse bằng cách ánh xạ:
-      - title  → tên sản phẩm
-      - text   → mô tả đầy đủ
-      - metadata → giá, đánh giá, thương hiệu, sku, ...
-    Extension sẽ dựa vào content_type == "product" để hiển thị khác.
+    name_vi: tên sản phẩm đã chuẩn hóa tiếng Việt từ Gemini (ưu tiên hơn tên gốc).
     """
+    display_name = name_vi or product.get("name") or "Sản phẩm"
     return {
         "url": url,
         "method": "structured_data",
-        "title": product.get("name") or "Sản phẩm",
+        "title": display_name,
         "text": product.get("description") or "",
         "metadata": {
             "price": product.get("price"),
@@ -77,6 +84,7 @@ def _product_to_unified_response(
             "site_name": product.get("site_name"),
             "sku": product.get("sku"),
             "extraction_note": product.get("extraction_note"),
+            "name_original": product.get("name"),  # tên gốc để debug
         },
         "content_type": ContentType.PRODUCT.value,
         "summary": summary,
@@ -90,8 +98,10 @@ async def _dispatch_product_from_html(
 ) -> Dict[str, Any]:
     """FR3.2: trích xuất sản phẩm từ HTML đã render (ưu tiên từ extension)."""
     product = extract_product_from_html(url, html)
-    summary = await summarize_product(product, gemini_api_key)
-    return _product_to_unified_response(product, summary, url)
+    gemini_result = await summarize_product(product, gemini_api_key)
+    summary = gemini_result.get("summary") if isinstance(gemini_result, dict) else gemini_result
+    name_vi = gemini_result.get("name_vi") if isinstance(gemini_result, dict) else None
+    return _product_to_unified_response(product, summary, url, name_vi)
 
 
 async def _dispatch_product_from_url(
@@ -100,8 +110,10 @@ async def _dispatch_product_from_url(
 ) -> Dict[str, Any]:
     """FR3.2: backend tự tải HTML rồi trích xuất sản phẩm."""
     product = await fetch_and_extract_product(url)
-    summary = await summarize_product(product, gemini_api_key)
-    return _product_to_unified_response(product, summary, url)
+    gemini_result = await summarize_product(product, gemini_api_key)
+    summary = gemini_result.get("summary") if isinstance(gemini_result, dict) else gemini_result
+    name_vi = gemini_result.get("name_vi") if isinstance(gemini_result, dict) else None
+    return _product_to_unified_response(product, summary, url, name_vi)
 
 
 # ---------------------------------------------------------------------------

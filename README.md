@@ -308,31 +308,32 @@ HoverAI/
 ├── 📁 backend/                    # Backend services (Python/FastAPI)
 │   ├── 📄 requirements.txt        # Python dependencies
 │   └── 📁 app/
-│       ├── 📄 __init__.py        # Package initialization
-│       ├── 📄 main.py            # FastAPI app & core endpoints
-│       ├── 📁 models/            # Pydantic request/response models
-│       ├── 📁 routes/            # API endpoint routes
-│       │   ├── security.py       # FR2.1, FR2.2 - Safe Browsing & Anti-phishing
-│       │   ├── content.py        # FR3.1-3.2 - Content extraction
-│       │   ├── video.py          # FR3.3-3.5 - Video & audio processing
-│       │   └── rag.py            # FR4.1-4.3 - RAG pipeline
-│       ├── 📁 services/          # Business logic
-│       │   ├── url_safety.py           # Safe Browsing API
-│       │   ├── phishing_detector.py     # Domain comparison
-│       │   ├── content_classifier.py    # Article/product/video classifier
-│       │   ├── content_dispatcher.py    # Điều phối processor theo content type
-│       │   ├── content_extractor.py    # Trafilatura/Newspaper/Jina
-│       │   └── gemini_service.py       # Gemini summarization
+│       ├── 📄 __init__.py
+│       ├── 📄 main.py             # FastAPI app entry point, CORS, middleware, health check
+│       ├── 📁 routes/             # API endpoints (thin HTTP adapters)
+│       │   ├── security.py        # FR2.1, FR2.2 — Safe Browsing & Anti-phishing
+│       │   └── content.py         # FR3.1, FR3.2 — Article & Product extraction
+│       └── 📁 services/           # Business logic
+│           ├── url_safety.py           # Google Safe Browsing API wrapper (TTL cache)
+│           ├── phishing_detector.py    # Domain-comparison phishing detection
+│           ├── content_classifier.py   # URL/HTML → ContentType (ARTICLE/PRODUCT/VIDEO/UNKNOWN)
+│           ├── content_dispatcher.py   # Orchestration: classify → route → unified response
+│           ├── content_extractor.py    # FR3.1: article fetch + Trafilatura/Newspaper/Jina pipeline
+│           ├── jina_reader.py          # Shared Jina Reader HTTP client (r.jina.ai) + markdown parsers
+│           ├── article_summarizer.py   # FR3.1: Gemini — Vietnamese title normalization + article summary
+│           ├── product_extractor.py    # FR3.2: JSON-LD/OG/Microdata/H1/Jina 5-layer product extraction
+│           └── product_summarizer.py   # FR3.2: Gemini — Vietnamese name normalization + product summary
 │
 └── 📁 extension/                  # Chrome Extension (Manifest V3)
-    ├── 📄 manifest.json          # Manifest V3 configuration
-    ├── 📄 content.js             # Alt + Hover, popup và phân tích trang hiện tại
-    ├── 📄 background.js           # MV3 service worker gọi backend
-    └── 📄 style.css               # Extension styling
+    ├── 📄 manifest.json           # Manifest V3 configuration
+    ├── 📄 content.js              # Alt + Hover logic, popup UI, article/product rendering
+    ├── 📄 background.js           # MV3 service worker — proxies API calls to backend
+    └── 📄 style.css               # Extension popup styling
 ```
 
-  Các file `product_extractor.py`, `video_handler.py`, `rag_pipeline.py`,
-  `options.html` và `options.js` sẽ được thêm khi triển khai các module tương ứng.
+> **Planned (not yet implemented):**
+> `backend/app/routes/video.py` (FR3.3–3.5), `backend/app/routes/rag.py` (FR4),
+> `extension/options.html` + `extension/options.js` (FR5 Dashboard).
 
 ## 🔧 Configuration
 
@@ -506,7 +507,7 @@ Have questions or suggestions?
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-08-31  
-**Status**: 🚧 Active Development  
-**Maintainer**: HoverAI - Web Link Analysis & AI Assistant Team
+**Version**: 1.1.0  
+**Last Updated**: 2026-09-11  
+**Status**: 🚧 Active Development (Module 3 — 43% complete)  
+**Maintainer**: HoverAI — Web Link Analysis & AI Assistant Team

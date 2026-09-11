@@ -7,11 +7,16 @@ from typing import Any, Dict, Optional
 import aiohttp
 from bs4 import BeautifulSoup
 
+from app.services.jina_reader import (
+    JINA_TIMEOUT_PRODUCT,
+    fetch_jina_markdown,
+    parse_first_paragraph,
+    parse_title_from_markdown,
+)
+
 # Giới hạn HTML đầu vào (5 MB) để tránh OOM.
 MAX_HTML_BYTES = 5 * 1024 * 1024
 FETCH_TIMEOUT_SECONDS = 10
-JINA_TIMEOUT_SECONDS = 15        # Jina cần thời gian render JS
-JINA_MIN_TEXT_LENGTH = 100       # Bỏ qua nếu Jina trả về quá ít nội dung
 
 # Header giả lập trình duyệt thật để tránh bị chặn.
 _FETCH_HEADERS = {
@@ -303,72 +308,17 @@ def extract_product_from_html(url: str, html: str) -> Dict[str, Any]:
 
 
 async def _jina_enrich_product(url: str, product: Dict[str, Any]) -> None:
-    """FR3.2 lớp 5: dùng Jina Reader để render JS và lấy tên/mô tả sản phẩm cho SPA.
+    """FR3.2 lớp 5: dùng jina_reader để render JS và lấy tên/mô tả sản phẩm cho SPA.
 
-    Jina trả về Markdown đã render — parse heading đầu tiên làm tên sản phẩm,
-    đoạn văn đầu tiên có nghĩa làm mô tả. Cập nhật product dict in-place.
-    Không raise — nếu thất bại thì im lặng, giữ nguyên product cũ.
+    Cập nhật product dict in-place. Không raise — nếu thất bại giữ nguyên product cũ.
     """
-    jina_url = f"https://r.jina.ai/{url}"
-    _headers = {
-        "Accept": "text/markdown, text/plain;q=0.9",
-        "User-Agent": _FETCH_HEADERS["User-Agent"],
-    }
-    try:
-        timeout = aiohttp.ClientTimeout(total=JINA_TIMEOUT_SECONDS)
-        async with aiohttp.ClientSession(timeout=timeout, headers=_headers) as session:
-            async with session.get(jina_url) as resp:
-                if resp.status >= 400:
-                    return
-                text = (await resp.read()).decode("utf-8", errors="replace").strip()
-    except Exception:
+    markdown = await fetch_jina_markdown(url, timeout=JINA_TIMEOUT_PRODUCT)
+    if not markdown:
         return
 
-    if len(text) < JINA_MIN_TEXT_LENGTH:
-        return
+    name_found = parse_title_from_markdown(markdown, strip_site_suffix=True)
+    desc_found = parse_first_paragraph(markdown)
 
-    lines = text.splitlines()
-
-    # --- Tên sản phẩm: heading đầu tiên (# ...) hoặc dòng Title: ...
-    # Jina thường bắt đầu bằng: Title: <product name> | <site name>
-    import re as _re
-    _SITE_SUFFIX_RE = _re.compile(r'\s*[\|–\-]\s*[^|–\-]{2,40}$')
-
-    name_found: Optional[str] = None
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.lower().startswith("title:"):
-            candidate = stripped.split(":", 1)[1].strip()
-            # Bỏ hậu tố "| Shopee Việt Nam", "- Lazada VN", ...
-            candidate = _SITE_SUFFIX_RE.sub("", candidate).strip()
-            if len(candidate) > 10:
-                name_found = candidate[:200]
-                break
-        if stripped.startswith("#"):
-            candidate = stripped.lstrip("#").strip()
-            candidate = _SITE_SUFFIX_RE.sub("", candidate).strip()
-            if len(candidate) > 10:
-                name_found = candidate[:200]
-                break
-
-    # --- Mô tả: đoạn văn đầu tiên có ít nhất 30 ký tự, không phải heading/link
-    desc_found: Optional[str] = None
-    for line in lines:
-        stripped = line.strip()
-        if (
-            len(stripped) >= 30
-            and not stripped.startswith("#")
-            and not stripped.startswith("!")
-            and not stripped.startswith("[")
-            and not stripped.startswith("|")
-            and "http" not in stripped[:20]
-        ):
-            desc_found = stripped[:500]
-            break
-
-    # Chỉ cập nhật nếu hiện tại chưa có dữ liệu
     if name_found and not product.get("name"):
         product["name"] = name_found
         product["extraction_note"] = "JINA_PARTIAL"
