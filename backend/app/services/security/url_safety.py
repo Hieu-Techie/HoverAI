@@ -2,10 +2,9 @@ import os
 import aiohttp
 import asyncio
 from cachetools import TTLCache
-from dotenv import load_dotenv
 
 # Module 2, FR2.1: lớp bao bất đồng bộ cho Google Safe Browsing và cache kết quả.
-load_dotenv()
+# Lưu ý: dotenv được load bởi main.py, không load lại ở đây.
 SAFE_BROWSING_API_KEY = os.getenv("SAFE_BROWSING_API_KEY")
 
 # Cache lưu tối đa 1.000 URL trong 1 giờ để giảm số lần gọi API.

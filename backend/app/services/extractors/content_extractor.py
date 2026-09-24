@@ -10,7 +10,7 @@ try:
 except ImportError:
     Article = None
 
-from app.services.jina_reader import (
+from app.services.extractors.jina_reader import (
     JINA_TIMEOUT_ARTICLE,
     fetch_jina_markdown,
     parse_title_from_markdown,

@@ -3,7 +3,7 @@
 import os
 from typing import Any, Dict, Optional
 
-from app.services.gemini_client import GEMINI_MODEL, call_gemini_async  # noqa: F401
+from app.services.core.gemini_client import call_gemini_async
 
 SUMMARY_MAX_INPUT_CHARS = 30_000
 

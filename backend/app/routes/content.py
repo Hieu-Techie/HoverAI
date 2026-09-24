@@ -1,50 +1,28 @@
 from fastapi import APIRouter, HTTPException
-from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
-from app.services.content_dispatcher import (
+from app.models.content import ContentExtractionRequest, ContentExtractionResponse, HtmlContentExtractionRequest
+from app.models.product import ProductExtractionRequest, ProductExtractionResponse
+from app.models.video import VideoMetadataRequest, VideoMetadataResponse
+from app.services.dispatch.content_dispatcher import (
     UnsupportedContentTypeError,
     dispatch_html_content,
     dispatch_url_content,
 )
-from app.services.content_extractor import MAX_HTML_BYTES, ContentExtractionError
-from app.services.product_extractor import (
+from app.services.extractors.content_extractor import MAX_HTML_BYTES, ContentExtractionError
+from app.services.extractors.product_extractor import (
     extract_product_from_html,
     fetch_and_extract_product,
 )
-from app.services.product_summarizer import summarize_product
+from app.services.summarizers.product_summarizer import summarize_product
+from app.services.summarizers.video_summarizer import summarize_video
 
-# Module 3, FR3.1/FR3.2: API nhận URL hoặc HTML đã được Chrome render.
+# Module 3, FR3.1/FR3.2/FR3.3/FR3.4: API nhận URL hoặc HTML đã được Chrome render.
 router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
 # FR3.1 — bài viết
 # ---------------------------------------------------------------------------
-
-class ContentExtractionRequest(BaseModel):
-    """FR3.1: request để backend tự tải HTML từ URL công khai."""
-    url: HttpUrl
-    gemini_api_key: Optional[str] = Field(default=None, max_length=200)
-
-
-class ContentExtractionResponse(BaseModel):
-    """FR3.1/FR3.2: kết quả chung sau khi dispatcher xử lý — dùng chung cho article và product."""
-    url: HttpUrl
-    method: str
-    title: str
-    text: str
-    metadata: dict
-    content_type: str
-    summary: Optional[str] = None
-
-
-class HtmlContentExtractionRequest(BaseModel):
-    """FR3.1: request ưu tiên cho extension, dùng DOM đã render trong Chrome."""
-    url: HttpUrl
-    html: str = Field(min_length=1, max_length=MAX_HTML_BYTES)
-    page_title: str = Field(default="", max_length=500)
-    gemini_api_key: Optional[str] = Field(default=None, max_length=200)
 
 
 @router.post("/api/extract-content", response_model=ContentExtractionResponse)
@@ -80,30 +58,7 @@ async def extract_content_from_html(request: HtmlContentExtractionRequest):
 # FR3.2 — endpoint riêng cho sản phẩm (gọi trực tiếp, bypass classifier)
 # ---------------------------------------------------------------------------
 
-class ProductExtractionRequest(BaseModel):
-    """FR3.2: request trích xuất sản phẩm — có thể gửi HTML sẵn hoặc để backend tự tải."""
-    url: HttpUrl
-    html: Optional[str] = Field(default=None, max_length=MAX_HTML_BYTES)
-    gemini_api_key: Optional[str] = Field(default=None, max_length=200)
 
-
-class ProductExtractionResponse(BaseModel):
-    """FR3.2: kết quả trích xuất sản phẩm với các trường chuyên biệt."""
-    url: HttpUrl
-    content_type: str = "product"
-    name: Optional[str] = None
-    brand: Optional[str] = None
-    price: Optional[str] = None
-    price_display: Optional[str] = None
-    currency: Optional[str] = None
-    rating: Optional[str] = None
-    rating_display: Optional[str] = None
-    review_count: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    site_name: Optional[str] = None
-    sku: Optional[str] = None
-    summary: Optional[str] = None
 
 
 @router.post("/api/extract-product", response_model=ProductExtractionResponse)
@@ -135,9 +90,50 @@ async def extract_product(request: ProductExtractionRequest):
             "image_url": product.get("image_url"),
             "site_name": product.get("site_name"),
             "sku": product.get("sku"),
-            "summary": summary,
+            "summary": summary.get("summary") if isinstance(summary, dict) else summary,
         }
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"PRODUCT_EXTRACTION_ERROR: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# FR3.4 — tóm tắt dự đoán từ tiêu đề/mô tả (không có transcript)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/api/summarize-from-metadata", response_model=VideoMetadataResponse)
+async def summarize_from_metadata(request: VideoMetadataRequest):
+    """FR3.4: tóm tắt video từ tiêu đề/mô tả khi không có transcript thực.
+
+    Luôn đánh dấu is_prediction=True và kèm cảnh báo clickbait.
+    Dùng khi FR3.3 không lấy được transcript (video tắt phụ đề, nền tảng không hỗ trợ...).
+    """
+    result = await summarize_video(
+        title=request.title,
+        transcript=None,  # FR3.4 — không có transcript
+        description=request.description,
+        channel=request.channel or "",
+        platform=request.platform or "video",
+        api_key=request.gemini_api_key,
+    )
+
+    # Xác định cảnh báo tùy theo nguồn dữ liệu
+    if request.description and len(request.description.strip()) > 30:
+        warning = (
+            "Tóm tắt dựa trên mô tả video, không phải nội dung thực. "
+            "Có thể không phản ánh đầy đủ nội dung."
+        )
+    else:
+        warning = (
+            "Tóm tắt dự đoán chỉ dựa trên tiêu đề. "
+            "Có thể chứa yếu tố giật gân — chỉ mang tính tham khảo."
+        )
+
+    return {
+        "title_vi": result.get("title_vi") if result else None,
+        "summary": result.get("summary") if result else None,
+        "is_prediction": True,
+        "warning": warning,
+    }

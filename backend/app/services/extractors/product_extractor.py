@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 import aiohttp
 from bs4 import BeautifulSoup
 
-from app.services.jina_reader import (
+from app.services.extractors.jina_reader import (
     JINA_TIMEOUT_PRODUCT,
     fetch_jina_markdown,
     parse_first_paragraph,
@@ -303,6 +303,16 @@ def extract_product_from_html(url: str, html: str) -> Dict[str, Any]:
 
     # Thông tin nguồn
     product["url"] = url
+
+    # Đánh giá chất lượng dữ liệu trích xuất — giống logic trong fetch_and_extract_product.
+    has_name = bool(product.get("name"))
+    has_price = bool(product.get("price"))
+    if not has_name:
+        # Trang SPA chưa chạy JS → không có tên, không có giá.
+        product["extraction_note"] = "SPA_PARTIAL"
+    elif not has_price:
+        # Có tên nhưng giá nằm trong JS → HTML tĩnh không đủ.
+        product.setdefault("extraction_note", "PRICE_NOT_AVAILABLE")
 
     return product
 

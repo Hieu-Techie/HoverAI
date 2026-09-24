@@ -22,6 +22,16 @@ VIDEO_HOSTS = {
     "vimeo.com",
     "dailymotion.com",
     "twitch.tv",
+    "rumble.com",
+    # Mạng xã hội (video embed)
+    "tiktok.com",
+    "facebook.com",
+    "fb.watch",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+    # Châu Á
+    "bilibili.com",
 }
 VIDEO_EXTENSIONS = (".mp4", ".webm", ".m3u8", ".mov", ".avi")
 

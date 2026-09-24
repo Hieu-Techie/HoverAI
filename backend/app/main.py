@@ -1,18 +1,22 @@
 import os
 import time
 import logging
+from dotenv import load_dotenv
+
+# QUAN TRỌNG: load_dotenv() phải gọi TRƯỚC mọi import project để các module
+# như url_safety.py có thể đọc được SAFE_BROWSING_API_KEY tại thời điểm import.
+load_dotenv()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, Any
-from dotenv import load_dotenv
+from app.models.core import BaseResponse, HealthResponse, URLRequest
 from app.routes import security
 from app.routes import content
-
-# Module 1/2/3: điểm khởi chạy FastAPI và nơi đăng ký toàn bộ route backend.
-load_dotenv()
+from app.routes import deepscan
 
 class Settings:
     """Module 2: Đọc cấu hình backend từ biến môi trường."""
@@ -29,22 +33,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("SmartWebAI")
 
-class BaseResponse(BaseModel):
-    """Response dùng cho kiểm tra trạng thái (health check) cơ bản của ứng dụng."""
-    success: bool = True
-    data: Optional[Any] = None
-    error: Optional[str] = None
-
-class URLRequest(BaseModel):
-    """Model dùng chung cho yêu cầu URL; hiện chưa có route dùng trực tiếp."""
-    url: HttpUrl
-
-class HealthResponse(BaseModel):
-    """Module vận hành: schema response của endpoint /api/health."""
-    status: str
-    service: str
-    version: str
-    environment: str
 
 app = FastAPI(
     title="HoverAI API",
@@ -90,6 +78,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(security.router)
 app.include_router(content.router)
+app.include_router(deepscan.router)  # FR3.5
 
 @app.get("/", response_model=BaseResponse)
 async def health_check():

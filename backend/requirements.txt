@@ -19,7 +19,7 @@ lxml_html_clean==0.4.5
 newspaper3k==0.2.8
 
 # Video & Audio Processing
-youtube-transcript-api==0.6.2
+youtube-transcript-api==1.2.4
 yt-dlp==2023.12.30
 
 # HTTP Clients

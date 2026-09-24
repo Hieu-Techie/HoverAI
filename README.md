@@ -308,32 +308,40 @@ HoverAI/
 ├── 📁 backend/                    # Backend services (Python/FastAPI)
 │   ├── 📄 requirements.txt        # Python dependencies
 │   └── 📁 app/
-│       ├── 📄 __init__.py
-│       ├── 📄 main.py             # FastAPI app entry point, CORS, middleware, health check
+│       ├── 📄 __init__.py             
+│       ├── 📄 main.py             # FastAPI app entry point, CORS, middleware
+│       ├── 📁 models/             # Pydantic models (data structures & validation)
+│       │   ├── __init__.py
+│       │   ├── core.py            # Base requests/responses
+│       │   ├── security.py        # Security check models
+│       │   ├── content.py         # Shared content models
+│       │   ├── product.py         # Product-specific models
+│       │   └── video.py           # Video-specific models
 │       ├── 📁 routes/             # API endpoints (thin HTTP adapters)
 │       │   ├── security.py        # FR2.1, FR2.2 — Safe Browsing & Anti-phishing
-│       │   └── content.py         # FR3.1, FR3.2 — Article & Product extraction
-│       └── 📁 services/           # Business logic
-│           ├── url_safety.py           # Google Safe Browsing API wrapper (TTL cache)
-│           ├── phishing_detector.py    # Domain-comparison phishing detection
-│           ├── content_classifier.py   # URL/HTML → ContentType (ARTICLE/PRODUCT/VIDEO/UNKNOWN)
-│           ├── content_dispatcher.py   # Orchestration: classify → route → unified response
-│           ├── content_extractor.py    # FR3.1: article fetch + Trafilatura/Newspaper/Jina pipeline
-│           ├── jina_reader.py          # Shared Jina Reader HTTP client (r.jina.ai) + markdown parsers
-│           ├── article_summarizer.py   # FR3.1: Gemini — Vietnamese title normalization + article summary
-│           ├── product_extractor.py    # FR3.2: JSON-LD/OG/Microdata/H1/Jina 5-layer product extraction
-│           └── product_summarizer.py   # FR3.2: Gemini — Vietnamese name normalization + product summary
+│       │   ├── content.py         # FR3.1, FR3.2, FR3.3 — Article, Product & Video
+│       │   └── deepscan.py        # FR3.5 — Audio Deep Scan API
+│       └── 📁 services/           # Business logic layer
+│           ├── 📁 core/           # Core shared services (e.g. Gemini Client)
+│           ├── 📁 dispatch/       # Content classification & routing logic
+│           ├── 📁 extractors/     # Data gathering (HTML, audio, video, Jina)
+│           ├── 📁 security/       # URL Safety and Phishing detection logic
+│           └── 📁 summarizers/    # AI processing & summarization modules
 │
 └── 📁 extension/                  # Chrome Extension (Manifest V3)
-    ├── 📄 manifest.json           # Manifest V3 configuration
-    ├── 📄 content.js              # Alt + Hover logic, popup UI, article/product rendering
-    ├── 📄 background.js           # MV3 service worker — proxies API calls to backend
-    └── 📄 style.css               # Extension popup styling
+    ├── 📄 manifest.json           # Manifest V3 configuration & permissions
+    ├── 📄 background.js           # MV3 service worker — proxies API calls, Deep Scan port
+    ├── 📄 style.css               # Extension popup styling
+    └── 📁 src/                    # Modularized frontend scripts
+        ├── config.js              # State globals, timeouts, constants
+        ├── utils.js               # URL helpers, positioning logic
+        ├── api.js                 # API wrappers, fetch functions
+        ├── ui.js                  # DOM manipulation, result display
+        └── content.js             # Event listeners (hover, chat, Deep Scan)
 ```
 
 > **Planned (not yet implemented):**
-> `backend/app/routes/video.py` (FR3.3–3.5), `backend/app/routes/rag.py` (FR4),
-> `extension/options.html` + `extension/options.js` (FR5 Dashboard).
+> `backend/app/routes/rag.py` (FR4), `extension/options.html` + `extension/options.js` (FR5 Dashboard).
 
 ## 🔧 Configuration
 

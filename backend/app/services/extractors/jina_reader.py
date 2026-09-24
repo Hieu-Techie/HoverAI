@@ -9,7 +9,7 @@ import asyncio
 import re
 from typing import Optional
 
-import aiohttp
+import httpx
 
 # ---------------------------------------------------------------------------
 # Config
@@ -20,14 +20,12 @@ JINA_TIMEOUT_ARTICLE = 30    # bài viết cần thêm thời gian vì lấy to�
 JINA_TIMEOUT_PRODUCT = 15    # sản phẩm chỉ cần tên/mô tả nhanh
 JINA_MIN_TEXT_LENGTH = 100   # bỏ qua nếu Jina trả về quá ít nội dung
 
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/131.0.0.0 Safari/537.36"
-)
+# Dùng httpx.get sync trong executor để bypass Cloudflare bot detection.
+# QUAN TRỌNG: KHÔNG set custom User-Agent vì Jina/Cloudflare block Chrome UA giả mạo.
+# httpx default UA (python-httpx/x.x) được phép qua.
 _JINA_HEADERS = {
-    "Accept": "text/markdown, text/plain;q=0.9",
-    "User-Agent": _USER_AGENT,
+    "Accept": "text/markdown, text/plain;q=0.9, */*;q=0.8",
+    "X-Return-Format": "markdown",
 }
 
 # Regex strip hậu tố site kiểu "| Shopee Việt Nam" hay "- Lazada VN"
@@ -41,29 +39,36 @@ _SITE_SUFFIX_RE = re.compile(r"\s*[\|\u2013\-]\s*[^|\u2013\-]{2,40}$")
 async def fetch_jina_markdown(url: str, timeout: int = JINA_TIMEOUT_PRODUCT) -> Optional[str]:
     """Gọi Jina Reader, trả về raw markdown text hoặc None nếu thất bại/403.
 
+    Sử dụng httpx sync trong executor để bypass Cloudflare bot detection —
+    httpx.AsyncClient bị Jina block (TLS fingerprint khác), còn httpx.Client
+    (sync) được qua.
+
     Args:
         url:     URL gốc cần render (KHÔNG phải jina URL).
-        timeout: Tổng timeout tính bằng giây. Dùng JINA_TIMEOUT_ARTICLE cho
-                 bài viết dài, JINA_TIMEOUT_PRODUCT cho trang sản phẩm.
+        timeout: Tổng timeout tính bằng giây.
 
     Returns:
-        Chuỗi markdown text, hoặc None nếu:
-        - Jina trả về status >= 400
-        - Xảy ra lỗi network/timeout
-        - Nội dung quá ngắn (< JINA_MIN_TEXT_LENGTH ký tự)
+        Chuỗi markdown text, hoặc None nếu thất bại/quá ngắn.
     """
     jina_url = f"{JINA_BASE_URL}/{url}"
-    try:
-        _timeout = aiohttp.ClientTimeout(total=timeout)
-        async with aiohttp.ClientSession(timeout=_timeout, headers=_JINA_HEADERS) as session:
-            async with session.get(jina_url) as resp:
-                if resp.status >= 400:
-                    return None
-                text = (await resp.read()).decode("utf-8", errors="replace").strip()
-    except (asyncio.TimeoutError, aiohttp.ClientError, Exception):
-        return None
 
-    return text if len(text) >= JINA_MIN_TEXT_LENGTH else None
+    def _fetch_sync() -> Optional[str]:
+        try:
+            resp = httpx.get(
+                jina_url,
+                headers=_JINA_HEADERS,
+                timeout=timeout,
+                follow_redirects=True,
+            )
+            if resp.status_code >= 400:
+                return None
+            text = resp.text.strip()
+            return text if len(text) >= JINA_MIN_TEXT_LENGTH else None
+        except Exception:
+            return None
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _fetch_sync)
 
 
 # ---------------------------------------------------------------------------

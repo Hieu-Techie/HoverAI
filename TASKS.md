@@ -86,32 +86,32 @@ Xử lý các loại content khác nhau và tạo tóm tắt thông minh.
 - [x] Handle different e-commerce sites (Amazon, Shopee, etc) - *Xử lý các site khác nhau* ✅
 
 ### FR3.3 - Xử lý Video & Lấy Phụ đề (Video Transcript Extraction)
-- [ ] Create YouTube transcript extraction module - *Tạo module lấy phụ đề YouTube*
-- [ ] Use youtube-transcript-api to fetch transcripts - *Dùng youtube-transcript-api*
-- [ ] Create POST /api/extract-transcript endpoint - *Tạo endpoint lấy transcript*
-- [ ] Handle videos without transcripts - *Xử lý video không có phụ đề*
-- [ ] Return transcript text to Gemini for summarization - *Gửi text cho Gemini tóm tắt*
+- [x] Create YouTube transcript extraction module - *Tạo module lấy phụ đề YouTube* ✅
+- [x] Use youtube-transcript-api to fetch transcripts - *Dùng youtube-transcript-api* ✅
+- [x] Create POST /api/extract-transcript endpoint - *Dùng chung /api/extract-content (VIDEO route)* ✅
+- [x] Handle videos without transcripts - *Xử lý video không có phụ đề (TRANSCRIPT_DISABLED / NOT_FOUND)* ✅
+- [x] Return transcript text to Gemini for summarization - *Gửi text cho Gemini tóm tắt* ✅
 
 ### FR3.4 - Tóm tắt với cảnh báo Clickbait (Fallback Summarization with Warning)
-- [ ] Extract video title and description - *Lấy tiêu đề và mô tả video*
-- [ ] Create POST /api/summarize-from-metadata endpoint - *Tạo endpoint tóm tắt từ metadata*
-- [ ] Send title+description to Gemini for prediction summary - *Gửi cho Gemini tóm tắt dự đoán*
-- [ ] Add ⚠️ warning label (Dự đoán từ tiêu đề, có thể chứa yếu tố giật gân) - *Thêm cảnh báo về clickbait*
-- [ ] Include "Deep Scan" button recommendation - *Gợi ý nút Deep Scan*
-- [ ] Test with clickbait videos - *Kiểm tra với video giật gân*
+- [x] Extract video title and description - *Lấy tiêu đề và mô tả video* ✅
+- [x] Create POST /api/summarize-from-metadata endpoint - *Tạo endpoint tóm tắt từ metadata* ✅
+- [x] Send title+description to Gemini for prediction summary - *Gửi cho Gemini tóm tắt dự đoán* ✅
+- [x] Add ⚠️ warning label (Dự đoán từ tiêu đề, có thể chứa yếu tố giật gân) - *Thêm cảnh báo về clickbait* ✅
+- [x] Include "Deep Scan" button recommendation - *Gợi ý nút Deep Scan* ✅
+- [x] Test with clickbait videos - *Kiểm tra với video giật gân* ✅
 
 ### FR3.5 - Quét sâu Âm thanh (Deep Scan Audio Analysis)
-- [ ] Implement yt-dlp integration for audio download - *Tích hợp yt-dlp để tải âm thanh*
-- [ ] Download audio stream from YouTube - *Tải luồng âm thanh*
-- [ ] Convert audio to format acceptable by Gemini - *Chuyển đổi định dạng audio*
-- [ ] Create POST /api/deepscan-audio endpoint - *Tạo endpoint deep scan*
-- [ ] Send audio directly to Gemini API for analysis - *Gửi audio cho Gemini phân tích*
-- [ ] Extract timestamps and key points from audio - *Trích xuất mốc thời gian*
-- [ ] Return detailed transcription + analysis - *Trả về transcription chi tiết*
-- [ ] Handle audio-only streams and podcasts - *Xử lý stream audio và podcast*
-- [ ] Add timeout for large audio files (max 5 mins) - *Xử lý timeout*
+- [x] Implement yt-dlp integration for audio download - *Tích hợp yt-dlp để tải âm thanh* ✅
+- [x] Download audio stream from YouTube - *Tải luồng âm thanh* ✅
+- [x] Convert audio to format acceptable by Gemini - *Chuyển đổi định dạng audio* ✅
+- [x] Create POST /api/deepscan-audio endpoint - *Tạo endpoint deep scan* ✅
+- [x] Send audio directly to Gemini API for analysis - *Gửi audio cho Gemini phân tích* ✅
+- [x] Extract timestamps and key points from audio - *Trích xuất mốc thời gian* ✅
+- [x] Return detailed transcription + analysis - *Trả về transcription chi tiết* ✅
+- [x] Handle audio-only streams and podcasts - *Xử lý stream audio và podcast* ✅
+- [x] Add timeout for large audio files (max 5 mins) - *Xử lý timeout* ✅
 
-**Status**: 43% Complete (15/35 tasks) — FR3.1 ✅ FR3.2 ✅
+**Status**: 100% Complete (35/35 tasks) — FR3.1 ✅ FR3.2 ✅ FR3.3 ✅ FR3.4 ✅ FR3.5 ✅ — **Module 3 DONE** 🎉
 
 ---
 
@@ -183,19 +183,19 @@ Lưu trữ lịch sử và cung cấp dashboard quản lý trực tiếp trên t
 |--------|------|-----------|-------|--------|
 | 1 | UI & Event Handling | 100% ✅ | 15/15 | 🎉 **COMPLETE** |
 | 2 | Network Security | 100% ✅ | 15/15 | 🎉 **COMPLETE** |
-| 3 | Content Extraction & Summarization | 43% | 15/35 | 🚧 FR3.1 ✅ FR3.2 ✅ |
+| 3 | Content Extraction & Summarization | 100% ✅ | 35/35 | 🎉 **COMPLETE** |
 | 4 | Contextual Q&A (RAG) | 0% | 0/21 | ❌ Requires Module 3 |
 | 5 | Knowledge Management | 0% | 0/16 | ❌ Requires Module 4 |
-| **TOTAL** | **HoverAI Project** | **44%** 🚧 | **45/102** | Continue Module 3 |
+| **TOTAL** | **HoverAI Project** | **65%** 🚧 | **65/102** | Continue Module 4 |
 
 ---
 
 ## 📌 Priority Tasks (Next Steps)
 
-### 🟡 **NEXT - Module 3**
-1. **[Module 3.1]** Setup content extraction module using Trafilatura
-   - File: `backend/app/services/content_extractor.py`
-2. **[Module 3.2]** Create meta tag parser for product pages
+### 🟡 **NEXT - Module 4 (Contextual Q&A with RAG)**
+1. **[FR4.1]** Text chunking & embedding với sentence-transformers + ChromaDB
+2. **[FR4.2]** Semantic search — query ChromaDB, retrieve top 3 chunks
+3. **[FR4.3]** Streaming response từ Gemini
 
 ---
 
