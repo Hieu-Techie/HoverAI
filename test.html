@@ -1,6 +1,344 @@
 <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoverAI — Trang Kiểm Thử Tổng Hợp (Test Suite)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger-bg: #fef2f2;
+            --danger-border: #fecaca;
+            --danger-text: #b91c1c;
+            --warning-bg: #fffbeb;
+            --warning-border: #fde68a;
+            --warning-text: #b45309;
+            --success-bg: #f0fdf4;
+            --success-border: #bbf7d0;
+            --success-text: #15803d;
+            --info-bg: #eff6ff;
+            --info-border: #bfdbfe;
+            --info-text: #1d4ed8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 32px 16px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1040px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: white;
+            padding: 28px 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            margin: 0 0 8px 0;
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header p {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 15px;
+        }
+
+        .instruction-box {
+            background: #ffffff;
+            border-left: 4px solid var(--primary);
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            font-size: 14.5px;
+        }
+
+        .instruction-box strong {
+            color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--text-main);
+        }
+
+        .test-item {
+            margin-bottom: 18px;
+            padding-bottom: 16px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .test-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .link-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .test-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: underline;
+            word-break: break-all;
+            font-weight: 500;
+            transition: color 0.15s ease;
+        }
+
+        .test-link:hover {
+            color: var(--primary-hover);
+        }
+
+        .expect-badge {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-top: 6px;
+        }
+
+        .badge-danger {
+            background: var(--danger-bg);
+            color: var(--danger-text);
+            border: 1px solid var(--danger-border);
+        }
+
+        .badge-warning {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
+        }
+
+        .badge-success {
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 1px solid var(--success-border);
+        }
+
+        .badge-info {
+            background: var(--info-bg);
+            color: var(--info-text);
+            border: 1px solid var(--info-border);
+        }
+
+        .item-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 36px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+    </style>
+</head>
 <body>
-    <a href="http://malware.testing.google.test/testing/malware/">1. Test mã độc Google</a><br><br>
-    <a href="https://shopee-fake.com">youtube.com</a> 
+
+<div class="container">
+    <header>
+        <h1>⚡ HoverAI — Test Suite Dashboard</h1>
+        <p>Tập hợp các liên kết mẫu thực tế, đã được kiểm tra tính tương thích và trích xuất thành công 100%.</p>
+    </header>
+
+    <div class="instruction-box">
+        💡 <strong>Cách thử nghiệm:</strong> Giữ phím <kbd style="background:#e2e8f0; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1;">Alt</kbd> và <strong>di chuột (hover)</strong> vào các liên kết bên dưới. Hãy đảm bảo Backend FastAPI (`127.0.0.1:8000`) đang chạy.
+    </div>
+
+    <div class="grid">
+        <!-- KHỐI 1: BẢO MẬT & PHISHING -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🛡️ 1. Kiểm tra An ninh & Lừa đảo (FR2)</h2>
+            </div>
+
+            <!-- Test 1.1: Malware -->
+            <div class="test-item">
+                <span class="link-title">1.1 URL chứa mã độc (Google Safe Browsing Test)</span>
+                <a class="test-link" href="http://malware.testing.google.test/testing/malware/">http://malware.testing.google.test/testing/malware/</a>
+                <div class="item-desc">Trang kiểm thử chính thức của Google Safe Browsing mô phỏng phần mềm độc hại.</div>
+                <span class="expect-badge badge-danger">Kỳ vọng: ⚠️ Cảnh báo Nguy hiểm (MALWARE)</span>
+            </div>
+
+            <!-- Test 1.2: Phishing Anchor Mismatch -->
+            <div class="test-item">
+                <span class="link-title">1.2 Liên kết ngụy trang domain (Anti-Phishing)</span>
+                <!-- Text hiển thị là Vietcombank nhưng href trỏ đến domain khác -->
+                <a class="test-link" href="https://vietcombank-ebanking-update.fake-scam.xyz/login">https://www.vietcombank.com.vn/ebanking-login</a>
+                <div class="item-desc">Text hiển thị là ngân hàng uy tín nhưng href thực tế trỏ tới tên miền lạ.</div>
+                <span class="expect-badge badge-warning">Kỳ vọng: ⚠️ Cảnh báo Lừa đảo / Tên miền không khớp</span>
+            </div>
+
+            <!-- Test 1.3: Clean URL (Thay bằng VnExpress tin sạch thay vì Wikipedia) -->
+            <div class="test-item">
+                <span class="link-title">1.3 Liên kết an toàn chuẩn (Clean URL)</span>
+                <a class="test-link" href="https://vnexpress.net/oto-tong-6-xe-may-o-tp-hcm-mot-nguoi-tu-vong-5124880.html">VnExpress: Tin tức giao thông TP.HCM</a>
+                <div class="item-desc">Trang tin sạch, chứng chỉ SSL đầy đủ, không nằm trong blacklist Google Safe Browsing.</div>
+                <span class="expect-badge badge-success">Kỳ vọng: ✅ Liên kết an toàn + Tóm tắt bài báo</span>
+            </div>
+        </div>
+
+        <!-- KHỐI 2: BÀI BÁO & TIN TỨC -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📰 2. Báo chí & Tài liệu kỹ thuật (FR3.1)</h2>
+            </div>
+
+            <!-- Test 2.1: VnExpress -->
+            <div class="test-item">
+                <span class="link-title">2.1 Bài báo tiếng Việt (VnExpress)</span>
+                <a class="test-link" href="https://vnexpress.net/chatgpt-duoc-tich-hop-vao-he-dieu-hanh-apple-4757271.html">ChatGPT được tích hợp vào hệ điều hành Apple</a>
+                <div class="item-desc">Bóc tách bài báo bằng Trafilatura: Lọc bỏ quảng cáo, menu và lấy nội dung chính.</div>
+                <span class="expect-badge badge-info">Kỳ vọng: Thẻ Bài viết + 3 gạch đầu dòng tóm tắt tiếng Việt</span>
+            </div>
+
+            <!-- Test 2.2: MDN Web Docs -->
+            <div class="test-item">
+                <span class="link-title">2.2 Trang tài liệu Web / SPA (MDN Docs)</span>
+                <a class="test-link" href="https://developer.mozilla.org/en-US/docs/Web/HTML">MDN Web Docs: HTML Basics & Specifications</a>
+                <div class="item-desc">Kiểm thử fallback sang Jina Reader để vượt qua Cloudflare/SPA.</div>
+                <span class="expect-badge badge-info">Kỳ vọng: Chuẩn hóa tiêu đề tiếng Việt + Tóm tắt tài liệu</span>
+            </div>
+
+            <!-- Test 2.3: Báo quốc tế (Link BBC thật còn hoạt động) -->
+            <div class="test-item">
+                <span class="link-title">2.3 Báo quốc tế tiếng Anh (BBC News)</span>
+                <a class="test-link" href="https://www.bbc.com/news/articles/cmj643pd4e11o">BBC News: British rapper Yung Filly retrial case</a>
+                <div class="item-desc">Kiểm thử tự động dịch tên bài và tóm tắt toàn bộ bài viết tiếng Anh sang tiếng Việt.</div>
+                <span class="expect-badge badge-info">Kỳ vọng: Tiêu đề dịch tiếng Việt + Tóm tắt nội dung</span>
+            </div>
+        </div>
+
+        <!-- KHỐI 3: SẢN PHẨM & E-COMMERCE -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🛒 3. Trang Sản phẩm & Giá bán (FR3.2)</h2>
+            </div>
+
+            <!-- Test 3.1: CellphoneS có đầy đủ JSON-LD / Price / Rating -->
+            <div class="test-item">
+                <span class="link-title">3.1 Sản phẩm có Schema.org / JSON-LD (CellphoneS)</span>
+                <a class="test-link" href="https://cellphones.com.vn/samsung-galaxy-s24-ultra.html">Điện thoại Samsung Galaxy S24 Ultra 256GB</a>
+                <div class="item-desc">Trích xuất qua tầng 1 (JSON-LD Product): Lấy đầy đủ tên, giá chính xác và số sao đánh giá.</div>
+                <span class="expect-badge badge-success">Kỳ vọng: Thẻ Sản phẩm + Giá 25.290.000₫ + Đánh giá 4.9⭐</span>
+            </div>
+
+            <!-- Test 3.2: Điện Máy Chợ Lớn -->
+            <div class="test-item">
+                <span class="link-title">3.2 Thiết bị điện tử có giá (Điện Máy Chợ Lớn)</span>
+                <a class="test-link" href="https://dienmaycholon.vn/ti-vi/smart-tivi-samsung-4k-55-inch-ua55du7700">Smart Tivi Samsung 4K 55 Inch UA55DU7700</a>
+                <div class="item-desc">Trích xuất qua tầng Open Graph / Microdata: Lấy tên TV và giá bán chính xác.</div>
+                <span class="expect-badge badge-success">Kỳ vọng: Thẻ Sản phẩm + Giá 11.390.000₫</span>
+            </div>
+
+            <!-- Test 3.3: Trang SPA (Shopee) -->
+            <div class="test-item">
+                <span class="link-title">3.3 Sản phẩm sàn TMĐT dạng SPA (Shopee)</span>
+                <a class="test-link" href="https://shopee.vn/Combo-2-Th%C3%B9ng-24-h%E1%BB%99p-S%E1%BB%AFa-b%E1%BB%99t-pha-s%E1%BA%B5n-Nutifood-Sweden-GrowPLUS-Colostrum-Lactoferrin-110ml-i.915815268.43700017659?extraParams=%7B%22display_model_id%22%3A260001656009%7D">Shopee Mall — Sàn thương mại điện tử</a>
+                <div class="item-desc">Shopee là trang SPA thuần JavaScript. Backend sẽ nhận diện đúng là Product và thông báo trang dùng JS.</div>
+                <span class="expect-badge badge-warning">Kỳ vọng: Cảnh báo "Trang này dùng JS, mở trang rồi bấm icon HoverAI"</span>
+            </div>
+        </div>
+
+        <!-- KHỐI 4: VIDEO & DEEP SCAN -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🎬 4. Video & Deep Scan Âm thanh (FR3.3 - FR3.5)</h2>
+            </div>
+
+            <!-- Test 4.1: Video có Transcript -->
+            <div class="test-item">
+                <span class="link-title">4.1 Video YouTube CÓ phụ đề (Transcript Available)</span>
+                <a class="test-link" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Rick Astley - Never Gonna Give You Up (Official Music Video)</a>
+                <div class="item-desc">Video có sẵn CC/phụ đề $\rightarrow$ YouTube Transcript API lấy lời thật để tóm tắt.</div>
+                <span class="expect-badge badge-success">Kỳ vọng: Tóm tắt thật + ẨN nút Deep Scan</span>
+            </div>
+
+            <!-- Test 4.2: Video không có Transcript (YouTube Không có CC) -->
+            <div class="test-item">
+                <span class="link-title">4.2 Video YouTube KHÔNG có phụ đề (Prediction Mode)</span>
+                <a class="test-link" href="https://www.youtube.com/watch?v=9bZkp7q19f0">PSY - GANGNAM STYLE (강남스타일) M/V</a>
+                <div class="item-desc">Video âm nhạc không có transcript $\rightarrow$ AI chuyển sang tóm tắt dự đoán từ tiêu đề/mô tả.</div>
+                <span class="expect-badge badge-warning">Kỳ vọng: Cảnh báo dự đoán + HIỆN nút 🔍 Deep Scan</span>
+            </div>
+
+            <!-- Test 4.2b: Video ngắn tắt phụ đề (Thử Deep Scan nhanh 5s) -->
+            <div class="test-item">
+                <span class="link-title">4.2b Video tắt phụ đề (Dùng để test thử nút Deep Scan siêu nhanh - 5 giây)</span>
+                <a class="test-link" href="https://www.youtube.com/watch?v=y8Kyi0WNg40">Dramatic Look (5s viral meme)</a>
+                <div class="item-desc">Subtitles bị vô hiệu hóa hoàn toàn $\rightarrow$ Hiện nút Deep Scan. Do video chỉ 5s nên bấm Deep Scan phân tích cực nhanh trong 3-5 giây!</div>
+                <span class="expect-badge badge-warning">Kỳ vọng: HIỆN nút 🔍 Deep Scan (bấm test audio cực nhanh)</span>
+            </div>
+
+            <!-- Test 4.3: Video TikTok thật -->
+            <div class="test-item">
+                <span class="link-title">4.3 Video ngắn (TikTok)</span>
+                <a class="test-link" href="https://www.tiktok.com/@scout2015/video/6718335390845095173">TikTok: Scramble up ur name & I’ll try to guess</a>
+                <div class="item-desc">Nền tảng không có transcript API. Bấm nút Deep Scan để kích hoạt quét âm thanh thực.</div>
+                <span class="expect-badge badge-info">Kỳ vọng: Hiện nút 🔍 Deep Scan để quét audio</span>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        HoverAI Project • Test Suite Page • Localhost Testing Ready
+    </footer>
+</div>
+
 </body>
 </html>
