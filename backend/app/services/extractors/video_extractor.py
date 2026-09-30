@@ -209,17 +209,21 @@ async def _fetch_og_metadata(url: str) -> Dict[str, str]:
 def _fetch_transcript_sync(video_id: str) -> Dict[str, Any]:
     """Lấy transcript YouTube — tương thích youtube-transcript-api v1.x.
 
-    API v1.x dùng instance + api.fetch() thay vì class method + list_transcripts().
-    Snippet là FetchedTranscriptSnippet (object) với .text, không phải dict.
-    Không raise — lỗi được mã hóa vào trường note.
+    Chiến lược:
+    1. Thử ngôn ngữ ưu tiên [vi, en] — transcript chất lượng cao nhất cho Gemini.
+    2. Nếu không có → lấy BẤT KỲ ngôn ngữ nào có sẵn (Hàn, Nhật, Tây Ban Nha, ...).
+       Gemini vẫn có thể đọc và tóm tắt transcript đa ngôn ngữ.
+    3. Chỉ trả TRANSCRIPT_DISABLED nếu kênh/video tắt hoàn toàn phụ đề.
     """
     api = YouTubeTranscriptApi()
 
     result = None
+    lang_code = None
 
     # Bước 1: thử ngôn ngữ ưu tiên (vi, en)
     try:
         result = api.fetch(video_id, languages=PREFERRED_LANGS)
+        lang_code = getattr(result, "language_code", "vi/en")
     except NoTranscriptFound:
         pass
     except TranscriptsDisabled:
@@ -227,16 +231,41 @@ def _fetch_transcript_sync(video_id: str) -> Dict[str, Any]:
     except Exception:
         return {"transcript": None, "note": "TRANSCRIPT_ERROR"}
 
-    # Bước 2: không có vi/en → lấy bất kỳ ngôn ngữ nào có sẵn
+    # Bước 2: không có vi/en → thử liệt kê và lấy ngôn ngữ đầu tiên có sẵn
     if result is None:
         try:
-            result = api.fetch(video_id)
+            transcript_list = api.list(video_id)
+            # Ưu tiên: manual > auto-generated, sau đó lấy bất kỳ
+            chosen = None
+            for t in transcript_list:
+                if chosen is None:
+                    chosen = t
+                elif not chosen.is_generated and t.is_generated:
+                    # giữ manual thay vì auto
+                    pass
+                elif chosen.is_generated and not t.is_generated:
+                    chosen = t
+            if chosen is not None:
+                result = api.fetch(video_id, languages=[chosen.language_code])
+                lang_code = chosen.language_code
         except TranscriptsDisabled:
             return {"transcript": None, "note": "TRANSCRIPT_DISABLED"}
         except NoTranscriptFound:
             return {"transcript": None, "note": "TRANSCRIPT_NOT_FOUND"}
         except Exception:
-            return {"transcript": None, "note": "TRANSCRIPT_ERROR"}
+            # Nếu list() thất bại, thử fetch() không tham số (lấy default)
+            try:
+                result = api.fetch(video_id)
+                lang_code = getattr(result, "language_code", None)
+            except TranscriptsDisabled:
+                return {"transcript": None, "note": "TRANSCRIPT_DISABLED"}
+            except NoTranscriptFound:
+                return {"transcript": None, "note": "TRANSCRIPT_NOT_FOUND"}
+            except Exception:
+                return {"transcript": None, "note": "TRANSCRIPT_ERROR"}
+
+    if result is None:
+        return {"transcript": None, "note": "TRANSCRIPT_NOT_FOUND"}
 
     # Ghép text — snippet là FetchedTranscriptSnippet với thuộc tính .text
     def _get_text(snip: Any) -> str:
@@ -251,7 +280,7 @@ def _fetch_transcript_sync(video_id: str) -> Dict[str, Any]:
     return {
         "transcript": full_text[:MAX_TRANSCRIPT_CHARS],
         "transcript_length": len(full_text),
-        "language": getattr(result, "language_code", None),
+        "language": lang_code or getattr(result, "language_code", None),
         "is_auto_generated": getattr(result, "is_generated", False),
         "note": None,
     }

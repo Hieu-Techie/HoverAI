@@ -21,8 +21,49 @@ async function fetchJson(path, body, timeoutMs = API_TIMEOUT_MS) {
 }
 
 async function extractTargetLinkContent(linkData) {
-    // FR3.1: gửi đúng URL link đích qua service worker, không mở tab mới.
-    return fetchJson('/api/extract-content', { url: linkData.href }, CONTENT_API_TIMEOUT_MS);
+    // FR3.1/FR3.2: Cố gắng lấy HTML qua browser-fetch (có cookie, bypass SPA)
+    // trước, rồi gửi HTML đó lên backend. Nếu browser-fetch thất bại (CORS,
+    // bot-check thực sự), fallback về backend tự tải URL.
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), CONTENT_API_TIMEOUT_MS);
+
+        // Bước 1: yêu cầu Service Worker tải HTML trang đích với cookie người dùng
+        chrome.runtime.sendMessage({ type: 'fetch-page-html', url: linkData.href }, (htmlResponse) => {
+            if (chrome.runtime.lastError || !htmlResponse?.ok || !htmlResponse?.html) {
+                // Browser-fetch thất bại → fallback: backend tự tải URL
+                chrome.runtime.sendMessage(
+                    { type: 'hoverai-api-request', path: '/api/extract-content', body: { url: linkData.href } },
+                    (apiResponse) => {
+                        clearTimeout(timeoutId);
+                        if (chrome.runtime.lastError || !apiResponse?.ok) {
+                            reject(new Error(apiResponse?.error || 'API_REQUEST_FAILED'));
+                        } else {
+                            resolve(apiResponse.data);
+                        }
+                    }
+                );
+                return;
+            }
+
+            // Bước 2: gửi HTML đã lấy được lên /api/extract-content-from-html
+            const finalUrl = htmlResponse.finalUrl || linkData.href;
+            chrome.runtime.sendMessage(
+                {
+                    type: 'hoverai-api-request',
+                    path: '/api/extract-content-from-html',
+                    body: { url: finalUrl, html: htmlResponse.html, page_title: '' }
+                },
+                (apiResponse) => {
+                    clearTimeout(timeoutId);
+                    if (chrome.runtime.lastError || !apiResponse?.ok) {
+                        reject(new Error(apiResponse?.error || 'API_REQUEST_FAILED'));
+                    } else {
+                        resolve(apiResponse.data);
+                    }
+                }
+            );
+        });
+    });
 }
 
 async function extractCurrentPageContent() {
