@@ -57,6 +57,51 @@ document.addEventListener('mouseover', function(event) {
                             .then((content) => {
                                 if (analysisId === analysisSequence) {
                                     showContentResult(content);
+
+                                    // FR3.2 Shopee: nếu backend trả SPA_PARTIAL và URL là Shopee
+                                    // → tự động thử Shopee internal API (dùng cookie người dùng).
+                                    const isShopeeSPA =
+                                        content?.metadata?.extraction_note === 'SPA_PARTIAL' &&
+                                        /shopee\.(vn|com|co\.id|com\.my|com\.sg|ph|com\.br)/.test(currentLinkData.href);
+
+                                    if (isShopeeSPA) {
+                                        contentStatus.textContent = '🛒 Đang truy vấn API Shopee...';
+
+                                        // Timeout 6s: nếu Shopee API không phản hồi → restore SPA_PARTIAL
+                                        const shopeeTimeoutId = setTimeout(() => {
+                                            if (analysisId === analysisSequence) showContentResult(content);
+                                        }, 6000);
+
+                                        fetchShopeeProduct(currentLinkData.href)
+                                            .then((shopeeData) => {
+                                                clearTimeout(shopeeTimeoutId);
+                                                if (analysisId !== analysisSequence) return;
+                                                if (shopeeData && shopeeData.name) {
+                                                    // Ghi đè kết quả SPA_PARTIAL bằng dữ liệu thực từ API Shopee
+                                                    const enriched = Object.assign({}, content, {
+                                                        title: shopeeData.name,
+                                                        metadata: Object.assign({}, content.metadata, {
+                                                            price_display: shopeeData.price_display,
+                                                            rating_display: shopeeData.rating_display,
+                                                            brand: shopeeData.brand,
+                                                            image_url: shopeeData.image_url,
+                                                            extraction_note: 'SHOPEE_API',
+                                                        }),
+                                                        text: shopeeData.description || content.text || '',
+                                                    });
+                                                    showContentResult(enriched);
+                                                } else {
+                                                    // Shopee API thất bại → restore kết quả SPA_PARTIAL gốc
+                                                    showContentResult(content);
+                                                }
+                                            })
+                                            .catch(() => {
+                                                clearTimeout(shopeeTimeoutId);
+                                                if (analysisId === analysisSequence) showContentResult(content);
+                                            });
+                                    }
+
+
                                 }
                             })
                             .catch((error) => {
@@ -165,19 +210,23 @@ deepScanBtn.addEventListener('click', function () {
             chatHistory.scrollTop = chatHistory.scrollHeight;
         } else {
             contentStatus.className = 'content-status content-error';
-            const msg = response.error || 'DEEPSCAN_ERROR';
+            const rawMsg = response.error || 'DEEPSCAN_ERROR';
+            // Backend trả detail dạng "ERROR_CODE: message" — chỉ lấy phần code
+            const msg = rawMsg.split(':')[0].trim();
             const friendly = {
                 REQUEST_TIMEOUT: 'Quá thời gian chờ. Video có thể quá dài hoặc kết nối chậm.',
                 AUDIO_DOWNLOAD_FAILED: 'Không thể tải audio từ video này.',
                 AUDIO_FILE_TOO_LARGE: 'File audio quá lớn. Thử với video ngắn hơn (< 15 phút).',
                 GEMINI_API_KEY_REQUIRED: 'Cần cấu hình GEMINI_API_KEY để dùng Deep Scan.',
+                GEMINI_QUOTA_EXCEEDED: '⚠️ Đã vượt giới hạn 20 lần/ngày của Gemini API miễn phí.\nThử lại vào ngày mai, hoặc dùng API key trả phí để không bị giới hạn.',
                 DEEPSCAN_TIMEOUT: 'Quá thời gian xử lý (max 3 phút).',
                 FETCH_FAILED: 'Không thể kết nối đến backend. Hãy đảm bảo server đang chạy.',
             };
-            contentStatus.textContent = `Deep Scan lỗi: ${friendly[msg] || msg}`;
+            contentStatus.textContent = `Deep Scan lỗi: ${friendly[msg] || rawMsg}`;
             deepScanBtn.textContent = '🔍 Deep Scan (Quét âm thanh nâng cao)';
             deepScanBtn.disabled = false;
         }
+
     });
 
     port.onDisconnect.addListener(function() {

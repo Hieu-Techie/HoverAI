@@ -90,10 +90,10 @@ flowchart TD
 
     subgraph External["☁️ External Services"]
         SafeBrowsingAPI["Google Safe Browsing API v4"]
-        GeminiAPI["Google Gemini API\n(gemini-2.5-flash)\nText + Audio analysis"]
+        GeminiAPI["Google Gemini API\n(gemini-3.5-flash-lite/flash)\nText + Audio analysis"]
         JinaReader["Jina Reader\nr.jina.ai\nJS rendering as service"]
         YouTubeTranscript["YouTube Transcript API\n(no API key needed)"]
-        YtDlp["yt-dlp\n(local library)\nAudio/video download"]
+        YtDlp["yt-dlp\n(local library)\nAudio/video download\nDomain-aware cookies + User-Agent"]
         ChromaDB["ChromaDB ❌\n(local file storage)\nVector database"]
         SentenceTransformers["sentence-transformers ❌\n(local model)\nall-MiniLM-L6-v2"]
     end
@@ -619,7 +619,7 @@ flowchart LR
 |---|---|---|
 | Extension vs Web app | Chrome Extension | Cần truy cập DOM, chạy trên mọi trang |
 | Backend framework | FastAPI | Async native, auto OpenAPI docs, Pydantic validation |
-| AI model | Gemini 2.5 Flash | Nhanh, hỗ trợ audio file, giá tốt, đa ngôn ngữ |
+| AI model | Gemini 3.5 Flash Lite / 3.5 Flash | Nhanh, hỗ trợ audio file, quota cao hơn, có fallback |
 | Article extractor chính | Trafilatura | Tốt nhất cho news articles, loại boilerplate giỏi |
 | HTTP client cho Jina | httpx sync in executor | aiohttp và httpx async bị Cloudflare block; sync qua được |
 | Vector DB | ChromaDB | Chạy local, không cần server riêng, persistent |

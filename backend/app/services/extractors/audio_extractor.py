@@ -8,6 +8,7 @@ Giới hạn: tối đa MAX_AUDIO_SECONDS giây đầu (nếu ffmpeg khả dụn
 import asyncio
 import logging
 import os
+import shutil
 import tempfile
 from typing import Any, Dict, Tuple
 
@@ -30,21 +31,43 @@ def cleanup_audio_tmpdir(tmpdir: str) -> None:
         pass
 
 
-def _download_audio_sync(url: str) -> Tuple[str, Dict[str, Any]]:
+def _download_audio_sync(url: str, cookie_header: str = "") -> Tuple[str, Dict[str, Any]]:
     """Đồng bộ: tải audio bằng yt-dlp, trả về (file_path, info).
 
-    Ưu tiên m4a (native, không cần re-encode); fallback webm/best.
+    Ưu tiên m4a (native, không cần re-encode); fallback webm/opus/best.
     Nếu video > MAX_AUDIO_SECONDS và ffmpeg khả dụng → chỉ tải phần đầu.
+    cookie_header: chuỗi Cookie HTTP từ extension (bypass YouTube bot detection).
     """
     import yt_dlp  # import muộn để không chặn startup
 
     tmpdir = tempfile.mkdtemp(prefix="hoverai_audio_")
 
+    # Header dùng chung cho cả info và download (bypass bot detection nếu có cookie)
+    common_headers: Dict[str, str] = {}
+    if cookie_header:
+        common_headers["Cookie"] = cookie_header
+
+    # User-Agent browser chuẩn — cần thiết để bypass bot detection của TikTok,
+    # Facebook, Instagram, Vimeo và các nền tảng khác
+    BROWSER_USER_AGENT = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+
     # Bước 1: lấy info mà không tải
     info_opts: Dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
+        "http_headers": {
+            "User-Agent": BROWSER_USER_AGENT,
+            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+        },
     }
+    if common_headers:
+        # Merge: cookie header ghi đè nếu có (quan trọng hơn default UA)
+        info_opts["http_headers"].update(common_headers)
+
     try:
         with yt_dlp.YoutubeDL(info_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -52,23 +75,31 @@ def _download_audio_sync(url: str) -> Tuple[str, Dict[str, Any]]:
         cleanup_audio_tmpdir(tmpdir)
         raise RuntimeError(f"AUDIO_INFO_FAILED: {exc}") from exc
 
+
     duration = info.get("duration") or 0
     title = info.get("title", "")
     channel = info.get("uploader", "") or info.get("channel", "")
     platform = info.get("extractor_key", "YouTube")
 
-    # Bước 2: tải audio
+    # Bước 2: tải audio — format linh hoạt, không ép extension cứng
     output_template = os.path.join(tmpdir, "audio.%(ext)s")
     ydl_opts: Dict[str, Any] = {
-        "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio",
+        # Ưu tiên audio-only không video; nếu không có → lấy best có audio
+        "format": "bestaudio/best",
         "outtmpl": output_template,
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
+        "http_headers": {
+            "User-Agent": BROWSER_USER_AGENT,
+            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+        },
     }
+    if common_headers:
+        ydl_opts["http_headers"].update(common_headers)
 
-    # Nếu video dài → thử cắt (cần ffmpeg)
-    if duration > MAX_AUDIO_SECONDS:
+    # Nếu video dài và có ffmpeg → cắt về MAX_AUDIO_SECONDS
+    if duration > MAX_AUDIO_SECONDS and shutil.which("ffmpeg"):
         try:
             ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
                 None, [(0, MAX_AUDIO_SECONDS)]
@@ -78,8 +109,11 @@ def _download_audio_sync(url: str) -> Tuple[str, Dict[str, Any]]:
                 duration, MAX_AUDIO_SECONDS, MAX_AUDIO_SECONDS,
             )
         except AttributeError:
-            # yt-dlp cũ không có download_range_func → tải đủ, xử lý qua file size
             logger.warning("FR3.5: download_range_func không khả dụng, tải đủ audio.")
+    elif duration > MAX_AUDIO_SECONDS:
+        logger.info(
+            "FR3.5: không tìm thấy ffmpeg trên máy, tải toàn bộ audio và kiểm tra giới hạn dung lượng sau."
+        )
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -120,7 +154,8 @@ def _download_audio_sync(url: str) -> Tuple[str, Dict[str, Any]]:
     }
 
 
-async def download_video_audio(url: str) -> Tuple[str, Dict[str, Any]]:
+
+async def download_video_audio(url: str, cookie_header: str = "") -> Tuple[str, Dict[str, Any]]:
     """Async wrapper: tải audio video về máy.
 
     Returns:
@@ -130,5 +165,6 @@ async def download_video_audio(url: str) -> Tuple[str, Dict[str, Any]]:
         RuntimeError với mã: AUDIO_INFO_FAILED | AUDIO_DOWNLOAD_FAILED | AUDIO_FILE_TOO_LARGE
     """
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _download_audio_sync, url)
+    return await loop.run_in_executor(None, _download_audio_sync, url, cookie_header)
+
 

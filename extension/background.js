@@ -158,11 +158,47 @@ chrome.runtime.onConnect.addListener((port) => {
             return;
         }
 
+        // Lấy cookies của domain video (YouTube, Facebook, TikTok, v.v.) để bypass bot detection của yt-dlp
+        // Extension có quyền đọc cookies của mọi domain (host_permissions: <all_urls>)
+        let ytCookieHeader = '';
+        try {
+            const videoUrlObj = new URL(message.url);
+            const hostname = videoUrlObj.hostname;
+            const domainParts = hostname.split('.');
+            const baseDomain = domainParts.length >= 2 ? '.' + domainParts.slice(-2).join('.') : hostname;
+
+            const cookieDomains = new Set(['.youtube.com', '.google.com', baseDomain, '.' + hostname, hostname]);
+            const allCookies = [];
+            for (const domain of cookieDomains) {
+                try {
+                    const cookies = await chrome.cookies.getAll({ domain });
+                    if (cookies) allCookies.push(...cookies);
+                } catch (_) {}
+            }
+            // Loại bỏ cookie trùng tên
+            const uniqueCookies = [];
+            const seen = new Set();
+            for (const c of allCookies) {
+                if (!seen.has(c.name)) {
+                    seen.add(c.name);
+                    uniqueCookies.push(c);
+                }
+            }
+            ytCookieHeader = uniqueCookies
+                .map(c => `${c.name}=${c.value}`)
+                .join('; ');
+        } catch (_) {
+            // Nếu không lấy được cookies → vẫn thử không có
+        }
+
         try {
             const resp = await fetch(`${BACKEND_API_BASE}/api/deepscan-audio`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: message.url }),
+                body: JSON.stringify({
+                    url: message.url,
+                    yt_cookie_header: ytCookieHeader || undefined,
+                }),
             });
             const data = await resp.json().catch(() => null);
             if (!resp.ok) {
@@ -175,3 +211,4 @@ chrome.runtime.onConnect.addListener((port) => {
         }
     });
 });
+

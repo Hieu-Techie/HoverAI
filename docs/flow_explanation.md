@@ -197,7 +197,7 @@ httpx.get(f"https://r.jina.ai/{url}")  # sync, trong executor
 ### Tóm tắt bài viết (`article_summarizer.py`)
 ```python
 genai.Client(api_key=key).aio.models.generate_content(
-    model="gemini-2.5-flash",
+    model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite"),
     contents=f"Tóm tắt bài viết sau bằng tiếng Việt: {text}"
 )
 ```
@@ -335,7 +335,12 @@ chrome.runtime.onConnect.addListener(port => {
 # 1. Tạo tmpdir
 tmpdir = tempfile.mkdtemp()
 # 2. Download audio với yt-dlp
-ydl_opts = {'format': 'bestaudio', 'outtmpl': f'{tmpdir}/audio.%(ext)s'}
+ydl_opts = {
+    'format': 'bestaudio', 
+    'outtmpl': f'{tmpdir}/audio.%(ext)s',
+    'http_headers': {'User-Agent': 'Mozilla/5.0...'}
+}
+# (Nếu có ffmpeg, giới hạn tải 300s đầu tiên; nếu không tải toàn bộ)
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     info = ydl.extract_info(url, download=True)
 # 3. Kiểm tra kích thước (< 50MB)
@@ -350,7 +355,7 @@ client = genai.Client(api_key=gemini_api_key)
 uploaded_file = await client.aio.files.upload(path=audio_path)
 # Gọi Gemini với audio file + prompt
 response = await client.aio.models.generate_content(
-    model="gemini-2.5-flash",
+    model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite"),
     contents=[uploaded_file, "Tóm tắt video này bằng tiếng Việt, liệt kê điểm chính có mốc thời gian"]
 )
 ```
@@ -492,11 +497,13 @@ Routes chỉ là thin HTTP adapters — validate request, delegate đến servic
 
 #### `backend/app/services/core/gemini_client.py`
 ```python
-def create_gemini_client(api_key: str) -> genai.Client:
-    key = api_key or os.getenv("GEMINI_API_KEY", "")
-    return genai.Client(api_key=key)
+def call_gemini_sync(api_key: str, prompt: str, model=None) -> str:
+    # 1. Khởi tạo Client riêng cho request (BYOK)
+    client = genai.Client(api_key=api_key)
+    # 2. Thử model chính (gemini-3.5-flash-lite)
+    # 3. Nếu lỗi 429/404, fallback sang model phụ (gemini-3.5-flash)
 ```
-Tạo client mới mỗi request. Env var làm fallback khi user không cung cấp key.
+Tạo client mới mỗi request. Xử lý fallback tự động khi model bị lỗi quota (429) hoặc không tìm thấy (404), đảm bảo an toàn cho luồng BYOK.
 
 #### `backend/app/services/dispatch/content_classifier.py`
 Nhận URL string → trả về `ContentType` enum (`ARTICLE`, `PRODUCT`, `VIDEO`, `UNKNOWN`).
@@ -584,6 +591,7 @@ const PADDING = 12;
   - `fetch-page-html` → fetch HTML trang web với cookies user
 - `chrome.runtime.onConnect` → long-lived port cho Deep Scan
   - Nhận `{type:'start-deepscan', url}`
+  - Gắn kèm cookies của nền tảng tương ứng (domain-aware cookie cho youtube.com, facebook.com...) gửi qua HTTP header.
   - Fetch `POST /api/deepscan-audio` (30-90s)
   - `port.postMessage({ok, data})` khi xong
 

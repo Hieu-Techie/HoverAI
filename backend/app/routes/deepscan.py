@@ -43,13 +43,17 @@ async def deepscan_audio(request: DeepScanRequest):
     tmpdir: Optional[str] = None
 
     try:
-        # Bước 1: tải audio
+        # Bước 1: tải audio (dùng cookie của user nếu có để bypass bot detection)
         logger.info("FR3.5: bắt đầu Deep Scan cho %s", url)
+        cookie_header = request.yt_cookie_header or ""
+        if cookie_header:
+            logger.info("FR3.5: sử dụng cookie từ extension (%d chars)", len(cookie_header))
         audio_path, info = await asyncio.wait_for(
-            download_video_audio(url),
+            download_video_audio(url, cookie_header=cookie_header),
             timeout=120,  # 2 phút để tải
         )
         tmpdir = os.path.dirname(audio_path)
+
 
         # Bước 2: phân tích bằng Gemini
         result = await analyze_audio(
@@ -93,10 +97,19 @@ async def deepscan_audio(request: DeepScanRequest):
         msg = _error_map.get(code, (500, f"Deep Scan lỗi: {exc}"))
         raise HTTPException(status_code=msg[0], detail=msg[1]) from exc
     except Exception as exc:
+        err_str = str(exc)
+        # 429 Quota exceeded — thông báo rõ ràng thay vì DEEPSCAN_ERROR generic
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            logger.warning("FR3.5: Gemini quota exhausted — %s", url)
+            raise HTTPException(
+                status_code=429,
+                detail="GEMINI_QUOTA_EXCEEDED: Đã vượt giới hạn miễn phí của Gemini API hôm nay (20 lần/ngày). Thử lại vào ngày mai hoặc nâng cấp API key.",
+            ) from exc
         logger.error("FR3.5: lỗi không dự kiến: %s", exc)
         raise HTTPException(
             status_code=500, detail=f"DEEPSCAN_ERROR: {exc}"
         ) from exc
+
     finally:
         # Cleanup file tạm dù thành công hay lỗi
         if tmpdir:

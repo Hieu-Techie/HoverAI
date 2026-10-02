@@ -63,6 +63,7 @@
 - **Python**: 3.8 or higher
 - **pip**: Package manager
 - **Google Chrome**: Latest version
+- **FFmpeg (Optional but Recommended)**: Required to truncate long videos when using Deep Scan (without it, videos >50MB will be rejected). On Windows, install via `winget install ffmpeg`.
 - **RAM**: Minimum 4GB
 - **Disk Space**: ~2GB for dependencies and models
 - **API Keys**: 

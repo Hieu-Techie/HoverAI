@@ -97,6 +97,42 @@ def _parse_audio_analysis(raw: str) -> Dict[str, Any]:
     }
 
 
+def _extract_retry_delay(exc: Exception) -> int:
+    """Trích xuất số giây retry từ thông báo lỗi 429 của Gemini."""
+    import re
+    msg = str(exc)
+    m = re.search(r'retry[^\d]*(\d+)', msg, re.IGNORECASE)
+    return int(m.group(1)) + 2 if m else 45  # +2 giây buffer
+
+
+def _generate_with_fallback(
+    client: Any, model: str, contents: list, fallback_model: str = "gemini-3.5-flash-lite"
+) -> str:
+    """Gọi Gemini generate_content với retry 1 lần nếu 429.
+
+    Thứ tự:
+    1. Thử model chính (GEMINI_MODEL, mặc định gemini-2.5-flash)
+    2. Nếu 429 → chờ retry_delay giây → thử lại với fallback_model
+    3. Nếu vẫn 429 → raise để caller xử lý
+    """
+    try:
+        response = client.models.generate_content(model=model, contents=contents)
+        return (response.text or "").strip()
+    except Exception as exc:
+        err_str = str(exc)
+        if "429" not in err_str and "RESOURCE_EXHAUSTED" not in err_str:
+            raise  # Lỗi khác → không retry
+
+        # 429: chờ rồi thử fallback model
+        delay = _extract_retry_delay(exc)
+        logger.warning(
+            "FR3.5: Gemini 429 trên %s — chờ %ds rồi thử %s", model, delay, fallback_model
+        )
+        time.sleep(delay)
+        response = client.models.generate_content(model=fallback_model, contents=contents)
+        return (response.text or "").strip()
+
+
 def _analyze_audio_sync(
     audio_path: str, title: str, duration: int, platform: str, api_key: str
 ) -> Dict[str, Any]:
@@ -108,14 +144,10 @@ def _analyze_audio_sync(
 
     # --- Upload ---
     logger.info("FR3.5: đang upload audio lên Gemini Files API (%s, %s)…", ext, mime_type)
-    try:
-        file_ref = client.files.upload(
-            path=audio_path,
-            config={"mime_type": mime_type, "display_name": "hoverai_audio"},
-        )
-    except TypeError:
-        # SDK cũ hơn: thử dùng file kwarg
-        file_ref = client.files.upload(path=audio_path)
+    file_ref = client.files.upload(
+        file=audio_path,
+        config={"mime_type": mime_type, "display_name": "hoverai_audio"},
+    )
 
     # --- Chờ ACTIVE ---
     waited = 0
@@ -137,14 +169,14 @@ def _analyze_audio_sync(
 
     logger.info("FR3.5: file ở trạng thái %s sau %ds", state_final, waited)
 
-    # --- Phân tích ---
+    # --- Phân tích (với retry 429) ---
     prompt = _build_analysis_prompt(title, duration, platform)
     try:
-        response = client.models.generate_content(
+        raw = _generate_with_fallback(
+            client=client,
             model=GEMINI_MODEL,
             contents=[file_ref, prompt],
         )
-        raw = (response.text or "").strip()
     finally:
         # Cleanup file khỏi Gemini dù thành công hay lỗi
         try:
@@ -154,6 +186,7 @@ def _analyze_audio_sync(
             logger.warning("FR3.5: không xóa được file Gemini: %s", del_err)
 
     return _parse_audio_analysis(raw)
+
 
 
 async def analyze_audio(

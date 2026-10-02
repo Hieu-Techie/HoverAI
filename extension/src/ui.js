@@ -67,10 +67,48 @@ function showContentResult(result) {
 }
 
 function showArticleResult(result) {
-    // FR3.1: hiển thị tiêu đề và summary bài viết trong content status.
+    // FR3.1: hiển thị tiêu đề, tên site và summary bài viết.
+    const siteName = getSiteName(result.url || currentLinkData?.href || '', result.metadata?.site_name || null);
+    const title = result.title || `Nội dung từ ${siteName}`;
     contentStatus.textContent = result.summary
-        ? `${result.title || 'Nội dung trang đích'}\n\nTóm tắt:\n${result.summary}`
-        : `${result.title || 'Nội dung trang đích'}\n\nChưa có bản tóm tắt. Hãy cấu hình GEMINI_API_KEY để bật tính năng này.`;
+        ? `${title}\n\nTóm tắt:\n${result.summary}`
+        : `${title}\n\nChưa có bản tóm tắt. Hãy cấu hình GEMINI_API_KEY để bật tính năng này.`;
+}
+
+/**
+ * Chuyển hostname thành tên trang web thân thiện với người dùng.
+ * Dùng site_name từ backend nếu có, fallback về mapping tên miền phổ biến.
+ */
+function getSiteName(url, backendSiteName) {
+    if (backendSiteName) return backendSiteName;
+    try {
+        const hostname = new URL(url).hostname.replace(/^www\./, '');
+        const KNOWN_SITES = {
+            'shopee.vn': 'Shopee', 'shopee.com': 'Shopee',
+            'lazada.vn': 'Lazada', 'lazada.com': 'Lazada',
+            'tiki.vn': 'Tiki', 'sendo.vn': 'Sendo',
+            'facebook.com': 'Facebook', 'fb.com': 'Facebook',
+            'instagram.com': 'Instagram',
+            'twitter.com': 'X (Twitter)', 'x.com': 'X (Twitter)',
+            'linkedin.com': 'LinkedIn',
+            'youtube.com': 'YouTube', 'youtu.be': 'YouTube',
+            'tiktok.com': 'TikTok',
+            'wikipedia.org': 'Wikipedia',
+            'vnexpress.net': 'VnExpress', 'dantri.com.vn': 'Dân Trí',
+            'tuoitre.vn': 'Tuổi Trẻ', 'thanhnien.vn': 'Thanh Niên',
+            'nhandan.vn': 'Nhân Dân', 'baomoi.com': 'Báo Mới',
+            'amazon.com': 'Amazon', 'ebay.com': 'eBay',
+            'google.com': 'Google', 'github.com': 'GitHub',
+            'express.com.vn': 'Express', 'thegioididong.com': 'Thế Giới Di Động',
+            'cellphones.com.vn': 'CellphoneS', 'fptshop.com.vn': 'FPT Shop',
+        };
+        if (KNOWN_SITES[hostname]) return KNOWN_SITES[hostname];
+        // Fallback: viết hoa chữ cái đầu của tên miền
+        const name = hostname.split('.')[0];
+        return name.charAt(0).toUpperCase() + name.slice(1);
+    } catch {
+        return 'trang này';
+    }
 }
 
 function showProductResult(result) {
@@ -81,19 +119,21 @@ function showProductResult(result) {
     const rating = meta.rating_display || meta.rating || null;
     const brand = meta.brand || null;
     const note = meta.extraction_note || result.extraction_note || null;
+    const siteName = getSiteName(result.url || currentLinkData?.href || '', meta.site_name);
 
     let lines = [`🛒 ${name}`];
     if (brand) lines.push(`Thương hiệu: ${brand}`);
     if (price) lines.push(`Giá: ${price}`);
     if (rating) lines.push(`Đánh giá: ${rating}`);
 
-    // Ghi chú khi dữ liệu chưa đầy đủ (SPA không render bằng JS)
-    if (note === 'SPA_PARTIAL') {
-        lines.push('\n⚠️ Trang này dùng JavaScript để tải nội dung. Hãy mở trang và nhấn icon HoverAI để phân tích đầy đủ.');
+    if (note === 'SHOPEE_API') {
+        // Dữ liệu thực từ Shopee API — không cần cảnh báo
+    } else if (note === 'SPA_PARTIAL') {
+        lines.push(`\n🔐 ${siteName} yêu cầu đăng nhập để xem nội dung.\nHãy mở trang và đăng nhập, sau đó nhấn icon HoverAI để phân tích đầy đủ.`);
     } else if (note === 'JINA_PARTIAL') {
-        lines.push('\nℹ️ Giá và đánh giá chưa lấy được do trang dùng JavaScript. Mở trang và nhấn icon HoverAI để xem đầy đủ.');
+        lines.push(`\nℹ️ Giá và đánh giá chưa lấy được từ ${siteName}.\nMở trang và nhấn icon HoverAI để xem đầy đủ.`);
     } else if (note === 'PRICE_NOT_AVAILABLE') {
-        lines.push('\nℹ️ Giá sản phẩm không có trong HTML tĩnh. Mở trang để xem giá chính xác.');
+        lines.push(`\nℹ️ Giá sản phẩm trên ${siteName} cần mở trang để xem chính xác.`);
     }
 
     if (result.summary) {
@@ -108,35 +148,34 @@ function showContentError(error, securityResult = null) {
     // FR3.1/FR3.2: báo rõ lỗi trích xuất sau khi kết quả bảo mật đã được hiển thị.
     const reason = error.message || 'CONTENT_EXTRACTION_FAILED';
     contentStatus.className = 'content-status content-error';
+    const siteName = getSiteName(currentLinkData?.href || '', null);
 
-    // Timeout của extension (REQUEST_TIMEOUT) — trang đích hoặc backend quá chậm.
     if (reason === 'REQUEST_TIMEOUT') {
-        contentStatus.textContent = 'Trang đích phản hồi quá chậm (>35s). Bạn có thể mở trang rồi nhấn icon HoverAI để phân tích trực tiếp.';
+        contentStatus.textContent = `${siteName} phản hồi quá chậm (>35s).\nBạn có thể mở trang rồi nhấn icon HoverAI để phân tích trực tiếp.`;
         return;
     }
 
-    // PRODUCT_FETCH_FAILED — trang sản phẩm là SPA, cần mở trực tiếp.
     if (reason.startsWith('PRODUCT_FETCH_FAILED')) {
-        contentStatus.textContent = 'Trang sản phẩm này cần JavaScript để tải nội dung. Hãy mở trang, sau đó nhấn icon HoverAI trên thanh công cụ để phân tích đầy đủ.';
+        contentStatus.textContent = `${siteName} cần mở trang mới có thể xem thông tin sản phẩm.\nHãy nhấn vào link, sau đó nhấn icon HoverAI trên thanh công cụ.`;
         return;
     }
 
     const messages = {
-        SOURCE_BOT_CHALLENGE: 'Website đang chặn bot hoặc yêu cầu xác minh (Cloudflare, CAPTCHA). Hãy mở trang trực tiếp rồi dùng icon HoverAI.',
-        SOURCE_CONTENT_EMPTY: 'Website không trả về nội dung văn bản (có thể là SPA/JavaScript-only). Hãy mở trang rồi nhấn icon HoverAI để phân tích.',
-        CONTENT_NOT_FOUND: 'Không tìm thấy nội dung bài viết phù hợp trên trang này.',
-        CONTENT_TYPE_VIDEO_UNSUPPORTED: 'Đây là link video. Tính năng xử lý video sẽ ra mắt ở phiên bản tiếp theo.',
-        SOURCE_TIMEOUT: 'Website đích phản hồi quá chậm (>10s). Thử lại hoặc mở trang trực tiếp.',
-        SOURCE_UNAVAILABLE: 'Không thể kết nối tới website đích.',
-        CONTENT_TIMEOUT: 'Quá thời gian chờ xử lý nội dung trên backend.'
+        SOURCE_BOT_CHALLENGE: `${siteName} đang chặn truy cập tự động (Cloudflare/CAPTCHA).\nHãy mở trang trực tiếp rồi dùng icon HoverAI.`,
+        SOURCE_CONTENT_EMPTY: `${siteName} yêu cầu đăng nhập hoặc cần JavaScript để tải nội dung.\nHãy mở trang, đăng nhập (nếu cần), rồi nhấn icon HoverAI.`,
+        CONTENT_NOT_FOUND: `Không tìm thấy nội dung phù hợp trên ${siteName}.`,
+        CONTENT_TYPE_VIDEO_UNSUPPORTED: `Đây là link video trên ${siteName}. Tính năng xử lý video sẽ ra mắt ở phiên bản tiếp theo.`,
+        SOURCE_TIMEOUT: `${siteName} phản hồi quá chậm (>10s). Thử lại hoặc mở trang trực tiếp.`,
+        SOURCE_UNAVAILABLE: `Không thể kết nối tới ${siteName}. Kiểm tra kết nối mạng hoặc thử lại sau.`,
+        CONTENT_TIMEOUT: `Xử lý nội dung từ ${siteName} mất quá nhiều thời gian. Thử lại sau.`,
     };
 
-    contentStatus.textContent = messages[reason] || `Không thể lấy nội dung: ${reason}`;
+    contentStatus.textContent = messages[reason] || `Không thể lấy nội dung từ ${siteName}: ${reason}`;
 
     const linkIsSafe = securityResult?.safety?.safe === true
         && securityResult?.phishing?.is_phishing === false;
     if (linkIsSafe && reason !== 'SOURCE_BOT_CHALLENGE') {
-        contentStatus.textContent += '\n✅ Link đã xác minh an toàn. Mở trang rồi nhấn icon HoverAI để phân tích nội dung đầy đủ.';
+        contentStatus.textContent += `\n✅ Link đã xác minh an toàn. Mở trang ${siteName} rồi nhấn icon HoverAI để phân tích đầy đủ.`;
     }
 }
 

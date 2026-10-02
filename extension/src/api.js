@@ -66,6 +66,53 @@ async function extractTargetLinkContent(linkData) {
     });
 }
 
+/**
+ * Trích shopId và itemId từ URL Shopee.
+ * Pattern: /ten-san-pham-i.<shopId>.<itemId>
+ * Trả về { shopId, itemId } hoặc null nếu không khớp.
+ */
+function parseShopeeIds(url) {
+    const m = url.match(/-i\.(\d+)\.(\d+)/);
+    if (!m) return null;
+    return { shopId: m[1], itemId: m[2] };
+}
+
+/**
+ * Gọi Shopee internal API qua Service Worker (credentials: 'include' — dùng cookie).
+ * Trả về object sản phẩm { name, price, rating, image_url, ... } hoặc null nếu thất bại.
+ */
+function fetchShopeeProduct(url) {
+    return new Promise((resolve) => {
+        const ids = parseShopeeIds(url);
+        if (!ids) { resolve(null); return; }
+
+        chrome.runtime.sendMessage(
+            { type: 'fetch-shopee-product', shopId: ids.shopId, itemId: ids.itemId },
+            (response) => {
+                if (chrome.runtime.lastError || !response?.ok || !response?.data?.data?.item) {
+                    resolve(null);
+                    return;
+                }
+                const item = response.data.data.item;
+                const rawPrice = item.price ?? item.price_min ?? null;
+                const price = rawPrice !== null ? (rawPrice / 100000).toLocaleString('vi-VN') + '₫' : null;
+                const rating = item.item_rating?.rating_star
+                    ? item.item_rating.rating_star.toFixed(1) + '/5'
+                    : null;
+                resolve({
+                    name: item.name || null,
+                    price_display: price,
+                    rating_display: rating,
+                    image_url: item.image ? `https://down-vn.img.susercontent.com/file/${item.image}` : null,
+                    brand: item.brand || null,
+                    description: (item.description || '').slice(0, 300) || null,
+                });
+            }
+        );
+    });
+}
+
+
 async function extractCurrentPageContent() {
     // FR3.1: lấy DOM của trang đang mở khi người dùng bấm icon extension.
     const html = document.documentElement.outerHTML;

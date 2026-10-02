@@ -19,6 +19,7 @@ class VideoMetadataResponse(BaseModel):
 class DeepScanRequest(BaseModel):
     url: HttpUrl
     gemini_api_key: Optional[str] = Field(default=None, max_length=200)
+    yt_cookie_header: Optional[str] = Field(default=None, max_length=20000)  # Cookie string từ extension
 
 class DeepScanResponse(BaseModel):
     url: str

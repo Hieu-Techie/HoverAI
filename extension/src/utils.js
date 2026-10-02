@@ -1,16 +1,16 @@
 function extractAndNormalizeURL(linkElement) {
     // FR1.2: lấy href, xử lý URL tương đối và chỉ nhận HTTP(S).
-    let href = linkElement.getAttribute('href') || '';
-    
-    // Xử lý URL tương đối.
-    if (href.startsWith('/')) {
-        href = window.location.origin + href;
-    } else if (href.startsWith('#') || href === '') {
+    let href = linkElement.href || linkElement.getAttribute('href') || '';
+
+    // Bỏ qua anchor, javascript:, mailto:, và chuỗi rỗng.
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:')) {
         return { href: '', normalized: '', domain: '', isValid: false };
     }
-    
+
     try {
-        const url = new URL(href, window.location.origin);
+        // linkElement.href đã là absolute URL nếu là thẻ <a> thật —
+        // dùng trực tiếp thay vì dùng new URL(attr, origin) để tránh lỗi file:// protocol.
+        const url = new URL(href);
         if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) {
             return { href: '', normalized: '', domain: '', isValid: false };
         }
@@ -25,6 +25,7 @@ function extractAndNormalizeURL(linkElement) {
         return { href: '', normalized: '', domain: '', isValid: false };
     }
 }
+
 
 function extractAnchorText(linkElement) {
     // FR1.2/FR2.2: lấy text hiển thị để detector so sánh với domain đích.
